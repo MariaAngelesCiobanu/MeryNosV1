@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".CartaActivity">
+
+    <!-- Fondo mármol -->
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+        android:src="@drawable/fondo_marmol"
+        android:background="#F56FF"
+        />
+
+    <!-- Contenedor translúcido -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:background="#E6FFF"
+        android:padding="20dp">
+
+        <!-- Contenido principal con scroll -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/txtTitulo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="MeryNos Coctelería"
+                android:textSize="26sp"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:textColor="#1A1A1A"
+                android:fontFamily="sans-serif-medium"
+                android:layout_marginBottom="4dp" />
+
+            <TextView
+                android:id="@+id/txtMesa"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="📍 Mesa "
+                android:textSize="16sp"
+                android:gravity="center"
+                android:textColor="#666666"
+                android:layout_marginBottom="20dp" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerCocteles"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:clipToPadding="false"
+                android:paddingBottom="12dp"
+                tools:listitem="@layout/item_coctel"/>
+        </LinearLayout>
+
+        <!-- Botón fijo abajo -->
+        <Button
+            android:id="@+id/btnVolverLogin"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Inicio de sesión"
+            android:textSize="16sp"
+            android:layout_marginTop="12dp"
+            android:backgroundTint="#B02E46"
+            android:textColor="#FFFFFF"
+            android:fontFamily="sans-serif-medium" />
+    </LinearLayout>
+</FrameLayout>
