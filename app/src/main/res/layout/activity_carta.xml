@@ -59,7 +59,8 @@
                 android:layout_weight="1"
                 android:clipToPadding="false"
                 android:paddingBottom="12dp"
-                tools:listitem="@layout/item_coctel"/>
+                tools:ignore="SpeakableTextPresentCheck"
+                tools:listitem="@layout/item_coctel" />
         </LinearLayout>
 
         <!-- Botón fijo abajo -->

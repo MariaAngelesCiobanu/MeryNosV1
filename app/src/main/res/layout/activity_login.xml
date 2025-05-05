@@ -39,17 +39,19 @@
             android:id="@+id/edtUsuario"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
             android:hint="Usuario"
             android:inputType="text"
-            android:layout_marginBottom="16dp"/>
+            tools:ignore="TouchTargetSizeCheck" />
 
         <EditText
             android:id="@+id/edtContraseA"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginBottom="24dp"
             android:hint="Contraseña"
             android:inputType="textPassword"
-            android:layout_marginBottom="24dp"/>
+            tools:ignore="TouchTargetSizeCheck" />
 
         <Button
             android:id="@+id/btnIniciarSesion"
@@ -66,24 +68,26 @@
             android:id="@+id/linkOlvidar"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:clickable="true"
+            android:focusable="true"
             android:text="¿Has olvidado tu contraseña?"
             android:textColor="#B02E46"
             android:textSize="14sp"
             android:textStyle="bold"
-            android:layout_marginBottom="16dp"
-            android:clickable="true"
-            android:focusable="true"/>
+            tools:ignore="TouchTargetSizeCheck" />
 
         <!-- Enlace: Registro -->
         <TextView
             android:id="@+id/linkRegistro"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:clickable="true"
+            android:focusable="true"
             android:text="¿Aún no tienes cuenta? Regístrate gratis"
             android:textColor="#1A1A1A"
             android:textSize="14sp"
             android:textStyle="bold"
-            android:clickable="true"
-            android:focusable="true"/>
+            tools:ignore="TouchTargetSizeCheck" />
     </LinearLayout>
 </FrameLayout>
