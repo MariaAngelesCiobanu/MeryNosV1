@@ -48,7 +48,8 @@ class RegistroActivity : AppCompatActivity() {
                         UsuarioEntity(
                             nombreYApellidos = nombre,
                             email = email,
-                            contraseña = pass
+                            contraseña = pass,
+                            rol = "cliente"
                         )
                     )
                     runOnUiThread {

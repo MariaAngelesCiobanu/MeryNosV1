@@ -4,90 +4,73 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".LoginActivity">
+    tools:context=".CartaActivity">
 
-    <!-- Fondo de mármol -->
+    <!-- Fondo mármol -->
     <ImageView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:scaleType="centerCrop"
         android:src="@drawable/fondo_marmol"
-        android:alpha="1.0"
-        android:contentDescription="@string/fondo_marmol"/>
+        android:contentDescription="@string/app_name" />
 
-    <!-- Capa blanca translúcida con contenido -->
+    <!-- Contenedor transparente -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
-        android:padding="32dp"
-        android:gravity="center"
-        android:background="#E6FFF">
+        android:padding="20dp"
+        android:background="@android:color/transparent">
 
-        <TextView
-            android:id="@+id/txtTituloLogin"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="MeryNos Coctelería"
-            android:textSize="26sp"
-            android:textColor="#1A1A1A"
-            android:textStyle="bold"
-            android:fontFamily="sans-serif-medium"
-            android:layout_marginBottom="32dp"/>
-
-        <EditText
-            android:id="@+id/edtUsuario"
+        <!-- Contenido principal con scroll -->
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            android:hint="Usuario"
-            android:inputType="text"
-            tools:ignore="TouchTargetSizeCheck" />
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
 
-        <EditText
-            android:id="@+id/edtContraseA"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
-            android:hint="Contraseña"
-            android:inputType="textPassword"
-            tools:ignore="TouchTargetSizeCheck" />
+            <TextView
+                android:id="@+id/txtTitulo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="MeryNos Coctelería"
+                android:textSize="26sp"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:textColor="#1A1A1A"
+                android:fontFamily="sans-serif-medium"
+                android:layout_marginBottom="4dp" />
 
+            <TextView
+                android:id="@+id/txtMesa"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="📍 Mesa "
+                android:textSize="16sp"
+                android:gravity="center"
+                android:textColor="#666666"
+                android:layout_marginBottom="20dp" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerCocteles"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:clipToPadding="false"
+                android:paddingBottom="12dp"
+                tools:listitem="@layout/item_coctel" />
+        </LinearLayout>
+
+        <!-- Botón fijo abajo -->
         <Button
-            android:id="@+id/btnIniciarSesion"
+            android:id="@+id/btnVolverLogin"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Iniciar sesión"
+            android:text="Inicio de sesión"
+            android:textSize="16sp"
+            android:layout_marginTop="12dp"
             android:backgroundTint="#B02E46"
             android:textColor="#FFFFFF"
-            android:textSize="16sp"
-            android:layout_marginBottom="24dp"/>
-
-        <!-- Enlace: ¿Has olvidado tu contraseña? -->
-        <TextView
-            android:id="@+id/linkOlvidar"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            android:clickable="true"
-            android:focusable="true"
-            android:text="¿Has olvidado tu contraseña?"
-            android:textColor="#B02E46"
-            android:textSize="14sp"
-            android:textStyle="bold"
-            tools:ignore="TouchTargetSizeCheck" />
-
-        <!-- Enlace: Registro -->
-        <TextView
-            android:id="@+id/linkRegistro"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:clickable="true"
-            android:focusable="true"
-            android:text="¿Aún no tienes cuenta? Regístrate gratis"
-            android:textColor="#1A1A1A"
-            android:textSize="14sp"
-            android:textStyle="bold"
-            tools:ignore="TouchTargetSizeCheck" />
+            android:fontFamily="sans-serif-medium" />
     </LinearLayout>
 </FrameLayout>

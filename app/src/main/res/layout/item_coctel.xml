@@ -47,7 +47,7 @@
                 android:orientation="vertical">
 
                 <TextView
-                    android:id="@+id/txtNombre"
+                    android:id="@+id/txtNombreCoctel"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Mojito"
@@ -56,7 +56,7 @@
                     android:textColor="#1A1A1A"/>
 
                 <TextView
-                    android:id="@+id/txtDescripcion"
+                    android:id="@+id/txtDescripcionCoctel"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Refrescante con menta y lima"
@@ -73,7 +73,7 @@
                 android:gravity="center">
 
                 <TextView
-                    android:id="@+id/txtPrecio"
+                    android:id="@+id/txtPrecioCoctel"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="€6.00"
@@ -82,7 +82,7 @@
                     android:textStyle="bold"/>
 
                 <Button
-                    android:id="@+id/btnAñadir"
+                    android:id="@+id/btnAnadir"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Añadir"

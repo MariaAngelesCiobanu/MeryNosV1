@@ -14,6 +14,21 @@
         android:theme="@style/Theme.MeryNos"
         tools:targetApi="33">
         <activity
+            android:name=".HistorialPedidosActivity"
+            android:exported="false" />
+        <activity
+            android:name=".CarritoActivity"
+            android:exported="true" />
+        <activity
+            android:name=".DetallePedidoActivity"
+            android:exported="true" />
+        <activity
+            android:name=".PuntosActivity"
+            android:exported="true" />
+        <activity
+            android:name=".PerfilUsuarioActivity"
+            android:exported="true" />
+        <activity
             android:name=".BarmanActivity"
             android:exported="true" />
         <activity

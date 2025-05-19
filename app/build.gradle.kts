@@ -11,8 +11,9 @@ android {
 
     defaultConfig {
         applicationId = "com.example.merynos"
-        minSdk = 24
-        targetSdk = 33
+        minSdk = 26
+        compileSdk = 34
+        targetSdk = 34
         versionCode = 1
         versionName = "1.0"
 
@@ -48,7 +49,7 @@ dependencies {
 
     //Room
     implementation("androidx.room:room-runtime:2.6.1")
-    implementation(libs.androidx.activity)
+    implementation(libs.androidx.activity)  //va sin ""
     kapt("androidx.room:room-compiler:2.6.1")           // ESTE
     implementation("androidx.room:room-ktx:2.6.1")       // Para usar coroutines con Room
 

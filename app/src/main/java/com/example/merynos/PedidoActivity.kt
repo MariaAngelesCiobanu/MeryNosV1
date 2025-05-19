@@ -4,8 +4,11 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.room.Room
 import com.example.merynos.BaseDatos.AppDatabase
+import com.example.merynos.adapter.ItemPedido
+import com.example.merynos.adapter.PedidoAdapter
 import com.example.merynos.databinding.ActivityPedidoBinding
 import kotlinx.coroutines.launch
 
@@ -38,10 +41,25 @@ class PedidoActivity : AppCompatActivity() {
             val pedidos = db.pedidoDao().obtenerPorEstado("pendiente")
             val pedidoMesa = pedidos.find { it.id_mesa == mesa.id_mesa }
 
-            runOnUiThread {
-                if (pedidoMesa != null) {
+            if (pedidoMesa != null) {
+                val detalles = db.pedidoDao().obtenerDetallesPedido(pedidoMesa.id_pedido)
+
+                val listaItems = detalles.map { detalle ->
+                    val coctel = db.coctelDao().getCoctelPorId(detalle.id_coctel)
+                    ItemPedido(
+                        nombre = coctel.nombreCoctel,
+                        cantidad = detalle.cantidad,
+                        precioUnitario = coctel.precioCoctel
+                    )
+                }
+
+                runOnUiThread {
                     binding.txtEstadoPedido.text = "Estado: ${pedidoMesa.estado}"
-                } else {
+                    binding.recyclerPedido.layoutManager = LinearLayoutManager(this@PedidoActivity)
+                    binding.recyclerPedido.adapter = PedidoAdapter(listaItems)
+                }
+            } else {
+                runOnUiThread {
                     binding.txtEstadoPedido.text = "No hay pedidos pendientes"
                 }
             }

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="8dp"
+    android:elevation="4dp"
+    android:padding="12dp"
+    android:background="@android:color/white">
+
+    <TextView
+        android:id="@+id/txtPedidoHistorial"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Pedido #1 - Estado: preparado - Mesa 3"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:textColor="#1A1A1A" />
+</androidx.cardview.widget.CardView>
