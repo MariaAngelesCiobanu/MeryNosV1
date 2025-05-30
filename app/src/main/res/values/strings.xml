@@ -1,4 +1,9 @@
 <resources>
     <string name="app_name">MeryNos</string>
     <string name="fondo_marmol">Fondo de mármol</string>
+    <string name="descripcion_fondo_item_coctel">Fondo decorativo del ítem de cóctel</string>
+    <string name="descripcion_imagen_coctel">Imagen del cóctel</string>
+    <string name="texto_boton_anadir">Añadir</string>
+    <string name="descripcion_editar_coctel">Editar cóctel</string>
+    <string name="descripcion_borrar_coctel">Borrar cóctel</string>
 </resources>

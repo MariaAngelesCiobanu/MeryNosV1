@@ -8,7 +8,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.room.Room
 import com.example.merynos.BaseDatos.AppDatabase
-import com.example.merynos.adapter.BarmanAdapter
+import com.example.merynos.BaseDatos.adapter.BarmanAdapter
 import com.example.merynos.databinding.ActivityBarmanBinding
 import kotlinx.coroutines.launch
 

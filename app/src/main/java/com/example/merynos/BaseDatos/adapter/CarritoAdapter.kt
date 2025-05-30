@@ -1,4 +1,4 @@
-package com.example.merynos.adapter
+package com.example.merynos.BaseDatos.adapter
 
 
 import android.view.LayoutInflater

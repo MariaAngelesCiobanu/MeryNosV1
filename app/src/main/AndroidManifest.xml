@@ -14,8 +14,11 @@
         android:theme="@style/Theme.MeryNos"
         tools:targetApi="33">
         <activity
-            android:name=".HistorialPedidosActivity"
+            android:name=".AddEditCoctelActivity"
             android:exported="false" />
+        <activity
+            android:name=".HistorialPedidosActivity"
+            android:exported="true" />
         <activity
             android:name=".CarritoActivity"
             android:exported="true" />

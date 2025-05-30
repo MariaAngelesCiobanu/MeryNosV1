@@ -7,7 +7,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.room.Room
 import com.example.merynos.BaseDatos.AppDatabase
-import com.example.merynos.adapter.HistorialAdapter
+import com.example.merynos.BaseDatos.adapter.HistorialAdapter
 import com.example.merynos.databinding.ActivityHistorialPedidosBinding
 import kotlinx.coroutines.launch
 

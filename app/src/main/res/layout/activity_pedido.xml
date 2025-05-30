@@ -5,17 +5,26 @@
     android:padding="16dp"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/fondo_marmol">
+    android:background="@drawable/fondo_marmol"
+    tools:context=".PedidoActivity"> <TextView
+    android:id="@+id/txtTitulo"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:text="Tu Pedido"
+    android:textSize="24sp"
+    android:textStyle="bold"
+    android:gravity="center"
+    android:textColor="#B02E46"
+    android:layout_marginBottom="4dp"/>
 
     <TextView
-        android:id="@+id/txtTitulo"
+        android:id="@+id/txtMesaPedido"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Tu Pedido"
-        android:textSize="24sp"
-        android:textStyle="bold"
+        android:text="Mesa: Cargando..."
         android:gravity="center"
-        android:textColor="#B02E46"
+        android:textSize="16sp"
+        android:textColor="#333333"
         android:layout_marginBottom="12dp"/>
 
     <TextView
@@ -34,14 +43,28 @@
         android:layout_height="0dp"
         android:layout_weight="1"
         android:paddingBottom="8dp"
-        tools:ignore="SpeakableTextPresentCheck" />
+        tools:listitem="@layout/item_detalle_pedido" tools:ignore="SpeakableTextPresentCheck" />
+
+    <TextView
+        android:id="@+id/txtTotalPedido"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Total: €0.00"
+        android:gravity="end"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:textColor="#1A1A1A"
+        android:layout_marginTop="12dp"
+        android:layout_marginBottom="8dp"
+        android:paddingEnd="8dp"
+        android:paddingRight="8dp" />
 
     <Button
         android:id="@+id/btnPedirCuenta"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Pedir cuenta"
-        android:layout_marginTop="12dp"
+        android:layout_marginTop="4dp"
         android:backgroundTint="#B02E46"
         android:textColor="#FFFFFF"/>
 </LinearLayout>

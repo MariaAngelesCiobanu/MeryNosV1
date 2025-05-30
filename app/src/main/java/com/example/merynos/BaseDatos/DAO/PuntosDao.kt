@@ -10,6 +10,6 @@ interface PuntosDao {
     @Insert
     suspend fun insertarPuntos(punto: PuntosEntity)
 
-    @Query("SELECT SUM(puntosGanados) FROM Puntos WHERE id_usuario = :idUsuario")
+    @Query("SELECT SUM(puntosTotales) FROM Puntos WHERE id_usuario = :idUsuario")
     suspend fun obtenerTotalPuntos(idUsuario: Int): Int?
 }

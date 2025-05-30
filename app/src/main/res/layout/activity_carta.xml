@@ -57,14 +57,26 @@
                 android:layout_weight="1"
                 android:clipToPadding="false"
                 android:paddingBottom="12dp"
+                tools:ignore="SpeakableTextPresentCheck"
                 tools:listitem="@layout/item_coctel" />
         </LinearLayout>
 
         <Button
+            android:id="@+id/btnAnadirCoctelAdmin"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Añadir Nuevo Cóctel"
+            android:textSize="16sp"
+            android:layout_marginTop="8dp"
+            android:backgroundTint="#00796B"
+            android:textColor="#FFFFFF"
+            android:fontFamily="sans-serif-medium"
+            android:visibility="gone" />
+        <Button
             android:id="@+id/btnVolverLogin"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Inicio de sesión"
+            android:text="Volver al inicio"
             android:textSize="16sp"
             android:layout_marginTop="12dp"
             android:backgroundTint="#B02E46"

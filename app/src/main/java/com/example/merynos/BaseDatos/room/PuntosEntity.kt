@@ -8,6 +8,9 @@ import androidx.room.PrimaryKey
 data class PuntosEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val id_usuario: Int,
-    val puntos: Int
+    val puntos: Int,
+    val puntosTotales: Int
+
+
 )
 

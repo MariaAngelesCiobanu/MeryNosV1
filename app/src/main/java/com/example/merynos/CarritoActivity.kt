@@ -5,8 +5,8 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.merynos.databinding.ActivityCarritoBinding
-import com.example.merynos.adapter.CarritoAdapter
-import com.example.merynos.adapter.ItemCarrito
+import com.example.merynos.BaseDatos.adapter.CarritoAdapter
+import com.example.merynos.BaseDatos.adapter.ItemCarrito
 
 class CarritoActivity : AppCompatActivity() {
 
