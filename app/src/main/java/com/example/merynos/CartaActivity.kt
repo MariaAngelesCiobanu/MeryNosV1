@@ -56,38 +56,41 @@ class CartaActivity : AppCompatActivity() {
             .build()
 
         val rolUsuario = intent.getStringExtra("rol")
-        idUsuarioActual = intent.getIntExtra("usuario_id", 0)
+        idUsuarioActual = intent.getIntExtra("usuario_id", 0) // 0 podría ser para invitado
         esAdmin = (rolUsuario == "admin")
 
         val codigoMesaIntent = intent.getStringExtra("mesa")
 
         if (esAdmin && codigoMesaIntent == null) {
             binding.txtMesa.text = "📍 Administración de Cócteles"
-            cargarDatosDeLaCarta(null)
+            cargarDatosDeLaCarta(null) // Admin ve todos los cócteles, no asociado a mesa para pedidos
         } else if (codigoMesaIntent != null) {
             binding.txtMesa.text = "📍 $codigoMesaIntent"
             cargarDatosDeLaCarta(codigoMesaIntent)
         } else {
+            // No es admin y no hay código de mesa
             Toast.makeText(this, "Error: Mesa no especificada.", Toast.LENGTH_LONG).show()
             finish()
             return
         }
 
+        // Configurar visibilidad y acción del botón "Añadir Cóctel" para Admin
         if (esAdmin) {
-            binding.btnAnadirCoctelAdmin.visibility = View.VISIBLE
+            binding.btnAnadirCoctelAdmin.visibility = View.VISIBLE // Asegúrate que este ID existe en XML
             binding.btnAnadirCoctelAdmin.setOnClickListener {
-                val intent = Intent(this, AddEditCoctelActivity::class.java)
+                val intent = Intent(this, AddEditCoctelActivity::class.java) // Necesita AddEditCoctelActivity.kt
                 addEditCoctelActivityResultLauncher.launch(intent)
             }
         } else {
             binding.btnAnadirCoctelAdmin.visibility = View.GONE
         }
 
-        // --- Listener para el Botón Ver Carrito ---
-        binding.btnVerCarrito.setOnClickListener {
-            if (idMesaGlobal != null && idUsuarioActual != null) {
-                if (esAdmin && idMesaGlobal == null) {
-                    Toast.makeText(this, "Función de carrito no disponible en vista de administración general sin mesa seleccionada.", Toast.LENGTH_LONG).show()
+        // Configurar listener para el Botón Ver Carrito
+        binding.btnVerCarrito.setOnClickListener { // Asegúrate que este ID existe en XML
+            if (idMesaGlobal != null && idUsuarioActual != null) { // Necesario para asociar el carrito
+                // Si es admin en vista general, el carrito de "pedido" no aplica igual
+                if (esAdmin && codigoMesaIntent == null) { // Admin en vista general de cócteles
+                    Toast.makeText(this, "Función de carrito de cliente no disponible aquí.", Toast.LENGTH_LONG).show()
                     return@setOnClickListener
                 }
 
@@ -96,26 +99,25 @@ class CartaActivity : AppCompatActivity() {
                         .obtenerPorMesaYEstado(idMesaGlobal!!, "pendiente")
                         .find { it.id_usuario == idUsuarioActual!! }
 
-                    val intent = Intent(this@CartaActivity, CarritoActivity::class.java)
+                    val intent = Intent(this@CartaActivity, CarritoActivity::class.java) // Necesita CarritoActivity.kt
                     if (pedidoPendiente != null) {
                         intent.putExtra("ID_PEDIDO_ACTUAL", pedidoPendiente.id_pedido)
                         Log.d("CartaActivity", "Abriendo carrito para pedido ID: ${pedidoPendiente.id_pedido}")
                     } else {
-                        Log.d("CartaActivity", "Abriendo carrito, no hay pedido pendiente para este usuario/mesa. Pasando IDs.")
+                        Log.d("CartaActivity", "Abriendo carrito, no hay pedido pendiente. Pasando IDs de mesa/usuario.")
                     }
                     intent.putExtra("ID_MESA_CARRITO", idMesaGlobal)
                     intent.putExtra("ID_USUARIO_CARRITO", idUsuarioActual)
                     intent.putExtra("NOMBRE_MESA_CARRITO", binding.txtMesa.text.toString().substringAfter("📍").trim())
                     startActivity(intent)
                 }
-            } else if (esAdmin && idMesaGlobal == null) {
-                Toast.makeText(this, "Función de carrito no aplicable en vista de administración general sin mesa seleccionada.", Toast.LENGTH_LONG).show()
+            } else if (esAdmin && codigoMesaIntent == null) {
+                Toast.makeText(this, "Función de carrito no aplicable en vista de administración general.", Toast.LENGTH_LONG).show()
             }
             else {
                 Toast.makeText(this, "No se puede acceder al carrito: información de mesa o usuario incompleta.", Toast.LENGTH_SHORT).show()
             }
         }
-        // --- Fin Listener Botón Ver Carrito ---
 
         binding.btnVolverLogin.setOnClickListener {
             startActivity(Intent(this, LoginActivity::class.java))
@@ -125,24 +127,28 @@ class CartaActivity : AppCompatActivity() {
 
     private fun cargarDatosDeLaCarta(codigoMesaQR: String?) {
         lifecycleScope.launch {
-            if (codigoMesaQR != null) {
+            if (codigoMesaQR != null) { // Si se especificó una mesa (cliente o admin viendo una mesa específica)
                 val mesa = db.mesaDao().getMesaPorCodigoQR(codigoMesaQR)
                 if (mesa == null) {
                     runOnUiThread {
                         Toast.makeText(this@CartaActivity, "Mesa '$codigoMesaQR' no encontrada", Toast.LENGTH_SHORT).show()
                     }
-                    if (!esAdmin) {
-                        binding.recyclerCocteles.adapter = CoctelAdapter(emptyList(), esAdmin, {}, {}, {})
+                    if (!esAdmin) { // Si es cliente y la mesa no existe, no puede continuar
+                        binding.recyclerCocteles.adapter = CoctelAdapter(emptyList(), false, {}, {}, {})
                         return@launch
                     }
+                    // Si es admin y la mesa específica no se encontró, idMesaGlobal quedará null.
+                    // En este caso, la lógica de "añadir a pedido" se bloqueará por idMesaGlobal == null si el admin intentara usarla.
                 }
                 idMesaGlobal = mesa?.id_mesa
-            } else if (!esAdmin) {
-                Log.e("CartaActivity_Debug", "Error: Cliente sin código de mesa intentando cargar carta.")
-                runOnUiThread { Toast.makeText(this@CartaActivity, "Error: Mesa no especificada.", Toast.LENGTH_LONG).show() }
-                binding.recyclerCocteles.adapter = CoctelAdapter(emptyList(), esAdmin, {}, {}, {})
+            } else if (!esAdmin) { // No hay código de mesa Y NO es admin (es cliente/invitado sin mesa)
+                Log.e("CartaActivity_Debug", "Error: Cliente/Invitado sin código de mesa intentando cargar carta.")
+                runOnUiThread { Toast.makeText(this@CartaActivity, "Error: Mesa no especificada para el cliente.", Toast.LENGTH_LONG).show() }
+                binding.recyclerCocteles.adapter = CoctelAdapter(emptyList(), false, {}, {}, {})
                 return@launch
             }
+            // Si es admin y codigoMesaQR es null (vista de administración general), idMesaGlobal será null.
+            // Esto es correcto, ya que el admin en esta vista no hace pedidos, solo gestiona cócteles.
 
             val cocteles = db.coctelDao().getAll()
             Log.d("CartaActivity_Debug", "Número de CoctelEntity obtenidos de DAO: ${cocteles.size}")
@@ -155,10 +161,11 @@ class CartaActivity : AppCompatActivity() {
                     "paloma" -> R.drawable.paloma_img
                     "negroni" -> R.drawable.negroni_img
                     "pinia colada" -> R.drawable.pinia_colada_img
+                    // "dry martini" -> R.drawable.dry_martini_img // Añade si tienes la imagen
                     else -> R.drawable.placeholder_coctel
                 }
                 ItemCoctel(
-                    id_coctel = coctelEntity.id_coctel,
+                    id_coctel = coctelEntity.id_coctel, // ItemCoctel debe tener este campo
                     nombre = coctelEntity.nombreCoctel ?: "N/D",
                     descripcion = coctelEntity.metodoElaboracion ?: "N/D",
                     precio = coctelEntity.precioCoctel,
@@ -179,15 +186,15 @@ class CartaActivity : AppCompatActivity() {
                     listaItems,
                     esAdmin,
                     onAddClick = { coctelSeleccionado ->
-                        if (esAdmin) {
-                            Toast.makeText(this@CartaActivity, "Admin no puede añadir al pedido desde aquí.", Toast.LENGTH_SHORT).show()
+                        if (esAdmin && idMesaGlobal == null) { // Admin en vista general no puede añadir a pedido
+                            Toast.makeText(this@CartaActivity, "Para añadir a un pedido como admin, primero selecciona una mesa.", Toast.LENGTH_SHORT).show()
                             return@CoctelAdapter
                         }
                         if (idMesaGlobal == null) {
                             Toast.makeText(this@CartaActivity, "Mesa no válida para hacer pedido.", Toast.LENGTH_SHORT).show()
                             return@CoctelAdapter
                         }
-                        if (idUsuarioActual == null || (idUsuarioActual == 0 && intent.getStringExtra("rol") != "invitado") ) {
+                        if (idUsuarioActual == null) { // idUsuarioActual = 0 es para invitados
                             Toast.makeText(this@CartaActivity, "Usuario no identificado para el pedido.", Toast.LENGTH_SHORT).show()
                             return@CoctelAdapter
                         }
@@ -222,14 +229,14 @@ class CartaActivity : AppCompatActivity() {
                             if (detalleExistente != null) {
                                 db.pedidoDao().actualizarCantidad(
                                     pedidoId = pedidoId,
-                                    coctelId = detalleExistente.id_coctel,
+                                    coctelId = detalleExistente.id_coctel, // DetallePedidoEntity debe tener id_coctel
                                     nuevaCantidad = detalleExistente.cantidad + 1
                                 )
                             } else {
                                 db.pedidoDao().insertarDetalle(
                                     DetallePedidoEntity(
                                         id_pedido = pedidoId,
-                                        id_coctel = coctelSeleccionado.id_coctel,
+                                        id_coctel = coctelSeleccionado.id_coctel, // ItemCoctel debe tener id_coctel
                                         cantidad = 1
                                     )
                                 )
@@ -242,13 +249,13 @@ class CartaActivity : AppCompatActivity() {
                     onEditClick = { coctelAEditar ->
                         if (esAdmin) {
                             val intent = Intent(this@CartaActivity, AddEditCoctelActivity::class.java)
-                            intent.putExtra("ID_COCTEL_A_EDITAR", coctelAEditar.id_coctel)
+                            intent.putExtra("ID_COCTEL_A_EDITAR", coctelAEditar.id_coctel) // ItemCoctel debe tener id_coctel
                             addEditCoctelActivityResultLauncher.launch(intent)
                         }
                     },
                     onDeleteClick = { coctelABorrar ->
                         if (esAdmin) {
-                            mostrarDialogoConfirmarBorrado(coctelABorrar)
+                            mostrarDialogoConfirmarBorrado(coctelABorrar) // ItemCoctel debe tener id_coctel
                         }
                     }
                 )
@@ -257,7 +264,7 @@ class CartaActivity : AppCompatActivity() {
         }
     }
 
-    private fun mostrarDialogoConfirmarBorrado(coctel: ItemCoctel) {
+    private fun mostrarDialogoConfirmarBorrado(coctel: ItemCoctel) { // ItemCoctel debe tener id_coctel
         AlertDialog.Builder(this)
             .setTitle("Confirmar Borrado")
             .setMessage("¿Estás seguro de que quieres borrar '${coctel.nombre}'?")
@@ -265,13 +272,14 @@ class CartaActivity : AppCompatActivity() {
                 lifecycleScope.launch {
                     val coctelEntity = db.coctelDao().getCoctelPorId(coctel.id_coctel)
                     if (coctelEntity != null) {
-                        db.coctelDao().deleteCoctel(coctelEntity)
+                        db.coctelDao().deleteCoctel(coctelEntity) // CoctelDao debe tener deleteCoctel
                         Toast.makeText(this@CartaActivity, "'${coctel.nombre}' borrado", Toast.LENGTH_SHORT).show()
 
+                        // Refrescar la lista después de borrar
                         val codigoMesaActual = binding.txtMesa.text.toString().substringAfter("📍").trim()
                         if (codigoMesaActual.isNotEmpty() && codigoMesaActual != "Administración de Cócteles" && codigoMesaActual != "Mesa desconocida") {
                             cargarDatosDeLaCarta(codigoMesaActual)
-                        } else if (esAdmin) {
+                        } else if (esAdmin) { // Si era la vista de admin general
                             cargarDatosDeLaCarta(null)
                         }
                     } else {
