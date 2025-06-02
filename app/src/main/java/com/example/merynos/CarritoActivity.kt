@@ -197,7 +197,7 @@ class CarritoActivity : AppCompatActivity() {
                 dialog.dismiss()
             }
             .setNegativeButton("Cancelar", null)
-            .show()
+            .show();
     }
     private fun determinarImagenCoctel(nombreCoctel: String?): Int {
         return when (nombreCoctel?.lowercase(Locale.getDefault())) { // Usar Locale.getDefault() para consistencia
