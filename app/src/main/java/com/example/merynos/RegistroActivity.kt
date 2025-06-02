@@ -43,7 +43,7 @@ class RegistroActivity : AppCompatActivity() {
                         Toast.makeText(this@RegistroActivity, "El correo ya está registrado", Toast.LENGTH_SHORT).show()
                     }
 
-        } else {
+                } else {
                     db.usuarioDao().insertUsuario(
                         UsuarioEntity(
                             nombreYApellidos = nombre,

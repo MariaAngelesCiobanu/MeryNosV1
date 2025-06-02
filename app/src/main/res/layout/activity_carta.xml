@@ -6,7 +6,6 @@
     android:layout_height="match_parent"
     tools:context=".CartaActivity">
 
-    <!-- Fondo mármol -->
     <ImageView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -14,13 +13,12 @@
         android:src="@drawable/fondo_marmol"
         android:contentDescription="@string/app_name" />
 
-    <!-- Contenedor transparente -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
         android:padding="20dp"
-        android:background="@android:color/transparent"> <!-- Eliminamos color -->
+        android:background="@android:color/transparent">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -72,6 +70,16 @@
             android:textColor="#FFFFFF"
             android:fontFamily="sans-serif-medium"
             android:visibility="gone" />
+
+        <Button
+            android:id="@+id/btnVerCarrito"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Ver Mi Pedido / Carrito"
+            android:textSize="16sp"
+            android:layout_marginTop="8dp"
+            android:backgroundTint="#B02E46" android:textColor="#FFFFFF"
+            android:fontFamily="sans-serif-medium" />
         <Button
             android:id="@+id/btnVolverLogin"
             android:layout_width="match_parent"

@@ -15,7 +15,7 @@
         tools:targetApi="33">
         <activity
             android:name=".AddEditCoctelActivity"
-            android:exported="false" />
+            android:exported="true" />
         <activity
             android:name=".HistorialPedidosActivity"
             android:exported="true" />

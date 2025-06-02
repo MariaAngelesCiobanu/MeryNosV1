@@ -5,7 +5,8 @@
     android:padding="16dp"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/fondo_marmol">
+    android:background="@drawable/fondo_marmol"
+    tools:context=".CarritoActivity">
 
     <TextView
         android:id="@+id/txtTituloCarrito"
@@ -16,6 +17,26 @@
         android:textStyle="bold"
         android:gravity="center"
         android:textColor="#B02E46"
+        android:layout_marginBottom="8dp"/>
+
+    <TextView
+        android:id="@+id/txtMesaCarrito"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Mesa: Cargando..."
+        android:gravity="center"
+        android:textSize="16sp"
+        android:textColor="#444444"
+        android:layout_marginBottom="8dp"/>
+
+    <TextView
+        android:id="@+id/txtEstadoActualPedido"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Estado: Cargando..."
+        android:gravity="center"
+        android:textSize="16sp"
+        android:textColor="#444444"
         android:layout_marginBottom="16dp"/>
 
     <androidx.recyclerview.widget.RecyclerView
@@ -24,19 +45,18 @@
         android:layout_height="0dp"
         android:layout_weight="1"
         android:padding="4dp"
-        tools:ignore="SpeakableTextPresentCheck" />
+        tools:listitem="@layout/item_carrito" tools:ignore="SpeakableTextPresentCheck" />
 
     <TextView
         android:id="@+id/txtTotalCarrito"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Total: 0.00€"
+        android:text="Total: €0.00"
         android:textSize="18sp"
         android:textStyle="bold"
         android:textColor="#333333"
         android:layout_marginTop="8dp"
-        android:layout_marginBottom="8dp"
-        android:gravity="end"/>
+        android:layout_marginBottom="16dp" android:gravity="end"/>
 
     <Button
         android:id="@+id/btnConfirmarPedido"
@@ -45,4 +65,14 @@
         android:text="Confirmar Pedido"
         android:backgroundTint="#B02E46"
         android:textColor="#FFFFFF"/>
+
+    <Button
+        android:id="@+id/btnSeguirComprando"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Seguir Comprando"
+        android:layout_marginTop="8dp"
+        android:backgroundTint="#B02E46"
+        android:textColor="#FFFFFF"/>
+
 </LinearLayout>

@@ -13,7 +13,7 @@ import com.example.merynos.room.*
         DetallePedidoEntity::class,
         PuntosEntity::class
     ],
-    version = 1
+    version = 2
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun usuarioDao(): UsuarioDao
@@ -21,4 +21,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun coctelDao(): CoctelDao
     abstract fun pedidoDao(): PedidoDao
     abstract fun puntosDao(): PuntosDao
+
 }
