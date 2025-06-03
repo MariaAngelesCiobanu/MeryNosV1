@@ -2,4 +2,5 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <color name="rosa_palo_semi">#80D8BFD8</color>
 </resources>

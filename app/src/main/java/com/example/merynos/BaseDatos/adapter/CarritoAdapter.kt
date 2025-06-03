@@ -1,13 +1,12 @@
-package com.example.merynos.BaseDatos.adapter // O el paquete donde tengas este archivo
+package com.example.merynos.BaseDatos.adapter
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
-import com.example.merynos.databinding.ItemCarritoBinding // Asegúrate que tu layout se llama item_carrito.xml
-
+import com.example.merynos.databinding.ItemCarritoBinding
 
 data class ItemCarrito(
-    val id_detalle_pedido: Int,
+    val id_detalle_pedido: Int? = null,
     val id_coctel: Int,
     val nombre: String,
     var cantidad: Int,
@@ -16,41 +15,69 @@ data class ItemCarrito(
 )
 
 class CarritoAdapter(
-    private var lista: List<ItemCarrito> // Lista de los ítems a mostrar
+    private var lista: MutableList<ItemCarrito>,
+    private val onCantidadChangeListener: OnCantidadChangeListener
 ) : RecyclerView.Adapter<CarritoAdapter.CarritoViewHolder>() {
 
+    interface OnCantidadChangeListener {
+        fun onCantidadChanged(itemCarrito: ItemCarrito)
+    }
+
     inner class CarritoViewHolder(val binding: ItemCarritoBinding) :
-        RecyclerView.ViewHolder(binding.root)
+        RecyclerView.ViewHolder(binding.root) {
+
+        init {
+            binding.btnAumentarCantidad.setOnClickListener {
+                val position = adapterPosition
+                if (position != RecyclerView.NO_POSITION) {
+                    val item = lista[position]
+                    item.cantidad++
+                    binding.txtCantidad.text = "x${item.cantidad}"
+                    binding.txtSubtotal.text = "€%.2f".format(item.precioUnitario * item.cantidad)
+                    onCantidadChangeListener.onCantidadChanged(item)
+                }
+            }
+
+            binding.btnDisminuirCantidad.setOnClickListener {
+                val position = adapterPosition
+                if (position != RecyclerView.NO_POSITION) {
+                    val item = lista[position]
+                    if (item.cantidad > 1) {
+                        item.cantidad--
+                        binding.txtCantidad.text = "x${item.cantidad}"
+                        binding.txtSubtotal.text = "€%.2f".format(item.precioUnitario * item.cantidad)
+                        onCantidadChangeListener.onCantidadChanged(item)
+                    } else if (item.cantidad == 1) {
+                        // Opcional: Aquí puedes implementar la lógica para eliminar el item del carrito
+                        // Por ahora, solo notifica el cambio (la cantidad sigue siendo 1)
+                        onCantidadChangeListener.onCantidadChanged(item)
+                    }
+                }
+            }
+        }
+
+        fun bind(item: ItemCarrito) {
+            binding.txtNombreCoctel.text = item.nombre
+            binding.txtCantidad.text = "x${item.cantidad}"
+            binding.txtSubtotal.text = "€%.2f".format(item.precioUnitario * item.cantidad)
+            // Si necesitas mostrar la imagen aquí, lo harías con item.imagenResId
+        }
+    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): CarritoViewHolder {
-        // Inflar el layout para cada ítem del carrito
-        // Asegúrate que tu archivo XML se llama item_carrito.xml
         val binding = ItemCarritoBinding.inflate(LayoutInflater.from(parent.context), parent, false)
         return CarritoViewHolder(binding)
     }
 
     override fun onBindViewHolder(holder: CarritoViewHolder, position: Int) {
-        val item = lista[position] // Obtener el ítem actual de la lista
-        with(holder.binding) {
-            // Asignar los datos del 'item' a las vistas definidas en item_carrito.xml
-            // Usamos los IDs que me pasaste en tu último item_carrito.xml:
-            // txtNombreCoctel, txtCantidad, txtSubtotal
-
-            txtNombreCoctel.text = item.nombre
-            txtCantidad.text = "x${item.cantidad}" // Formato para mostrar "x1", "x2", etc.
-            txtSubtotal.text = "€%.2f".format(item.precioUnitario * item.cantidad) // Calcular y formatear subtotal
-
-            // Si tuvieras botones de acción en item_carrito.xml (como quitar, +/- cantidad),
-            // aquí configurarías sus OnClickListeners.
-        }
+        holder.bind(lista[position])
     }
 
     override fun getItemCount(): Int = lista.size
 
-    // Función para que CarritoActivity pueda actualizar la lista del adaptador
     fun actualizarLista(nuevaLista: List<ItemCarrito>) {
-        lista = nuevaLista
-        notifyDataSetChanged() // Notifica al RecyclerView que los datos han cambiado
-        // Para listas grandes, considera usar DiffUtil para mejor rendimiento.
+        lista.clear()
+        lista.addAll(nuevaLista)
+        notifyDataSetChanged()
     }
 }

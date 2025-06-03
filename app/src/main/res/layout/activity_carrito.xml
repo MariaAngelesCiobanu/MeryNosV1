@@ -39,13 +39,31 @@
         android:textColor="#444444"
         android:layout_marginBottom="16dp"/>
 
+    <TextView
+        android:id="@+id/txtPuntosUsuario"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Tus puntos: 0"
+        android:textSize="16sp"
+        android:textColor="#333333"
+        android:layout_marginBottom="8dp" />
+
+    <Button
+        android:id="@+id/btnCanjearPuntos"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Canjear Puntos"
+        android:backgroundTint="#B02E46"
+        android:textColor="#FFFFFF"
+        android:layout_marginBottom="16dp"/>
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerCarrito"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
         android:padding="4dp"
-        tools:listitem="@layout/item_carrito" tools:ignore="SpeakableTextPresentCheck" />
+        tools:listitem="@layout/item_carrito"
+        tools:ignore="SpeakableTextPresentCheck" />
 
     <TextView
         android:id="@+id/txtTotalCarrito"
@@ -56,7 +74,8 @@
         android:textStyle="bold"
         android:textColor="#333333"
         android:layout_marginTop="8dp"
-        android:layout_marginBottom="16dp" android:gravity="end"/>
+        android:layout_marginBottom="16dp"
+        android:gravity="end"/>
 
     <Button
         android:id="@+id/btnConfirmarPedido"
