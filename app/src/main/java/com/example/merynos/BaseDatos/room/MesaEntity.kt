@@ -8,5 +8,5 @@ data class MesaEntity(
     @PrimaryKey(autoGenerate = true) val id_mesa: Int = 0,
     val codigoQR: String,
     val nombreMesa: String,
-    val estado: String = "libre" // libre, ocupada, reservada
+    var estado: String = "libre" // libre, ocupada, reservada
 )

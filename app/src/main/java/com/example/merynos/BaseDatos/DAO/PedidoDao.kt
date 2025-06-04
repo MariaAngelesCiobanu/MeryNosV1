@@ -1,8 +1,10 @@
 package com.example.merynos.room
 
+import androidx.lifecycle.LiveData // <-- ¡Nueva importación!
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Transaction // Necesario si usas relaciones complejas (PedidoConDetalles)
 
 @Dao
 interface PedidoDao {
@@ -40,8 +42,13 @@ interface PedidoDao {
     @Query("SELECT * FROM Pedidos WHERE id_usuario = :idUsuario AND estado != 'pendiente'")
     suspend fun obtenerHistorialPorUsuario(idUsuario: Int): List<PedidoEntity>
 
-    // --- FUNCIÓN AÑADIDA PARA ACTUALIZAR POR ID DE DETALLE ---
     @Query("UPDATE DetallePedido SET cantidad = :nuevaCantidad WHERE id_detalle_pedido = :idDetallePedido")
     suspend fun actualizarCantidadDetallePedido(idDetallePedido: Int, nuevaCantidad: Int)
-    // -------------------------------------------------------
+
+    // --- ¡NUEVO MÉTODO CRUCIAL PARA EL BARMAN! ---
+    // Este método devolverá una lista de pedidos LiveData con estado 'confirmado'
+    // LiveData asegura que tu UI se actualice automáticamente cuando la base de datos cambie.
+    @Query("SELECT * FROM Pedidos WHERE estado = 'confirmado' ORDER BY id_pedido ASC")
+    fun obtenerPedidosConfirmadosParaBarman(): LiveData<List<PedidoEntity>>
+
 }

@@ -1,77 +1,69 @@
-package com.example.merynos // O tu paquete
+package com.example.merynos
 
-import android.app.Activity // Importado para setResult, aunque no se usa directamente aquí pero sí en AddEditCoctelActivity
+import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
-import android.text.InputType // Para el EditText del diálogo
-import android.util.Log      // Para los mensajes de Log
-import android.widget.EditText // Para el EditText del diálogo
+import android.text.InputType
+import android.util.Log
+import android.widget.EditText
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog // Para el diálogo emergente
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.room.Room
 import com.example.merynos.BaseDatos.AppDatabase
 import com.example.merynos.databinding.ActivityLoginBinding
-import com.example.merynos.room.MesaEntity // Necesario para crear una MesaEntity
-import com.example.merynos.room.UsuarioEntity // Si no lo tenías
+import com.example.merynos.room.MesaEntity
+import com.example.merynos.room.UsuarioEntity // Asegúrate de que esta importación sea correcta si tienes UsuarioEntity
 import kotlinx.coroutines.launch
 
 class LoginActivity : AppCompatActivity() {
 
-    // Binding para acceder a las vistas del layout XML (activity_login.xml)
     private lateinit var binding: ActivityLoginBinding
-    // Instancia de la base de datos Room
     private lateinit var db: AppDatabase
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Inflar el layout y establecerlo como la vista de la actividad
         binding = ActivityLoginBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Inicializar la instancia de la base de datos
         db = Room.databaseBuilder(
             applicationContext,
             AppDatabase::class.java,
-            "merynos.db" // Nombre del archivo de la base de datos
+            "merynos.db"
         )
-            .fallbackToDestructiveMigration() // Si cambias el esquema, la BD se recrea (pierde datos, solo para desarrollo)
+            .fallbackToDestructiveMigration()
             .build()
 
-        // Configurar el listener para el botón de "Iniciar Sesión"
         binding.btnVolverLogin.setOnClickListener {
-            // Obtener el email y la contraseña de los campos de texto, quitando espacios extra
-            val emailIngresado = binding.etNombre.text.toString().trim() // Asumo que etNombre es para el EMAIL
+            val emailIngresado = binding.etNombre.text.toString().trim()
             val contraseñaIngresada = binding.etPassword.text.toString().trim()
 
-            // Validación básica: asegurarse de que los campos no estén vacíos
             if (emailIngresado.isEmpty() || contraseñaIngresada.isEmpty()) {
                 Toast.makeText(this, "Completa todos los campos", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener // Salir del listener si hay campos vacíos
+                return@setOnClickListener
             }
 
             // Lógica para el administrador (credenciales fijas)
             if (emailIngresado == "admin" && contraseñaIngresada == "1234") {
                 Toast.makeText(this, "Admin Logueado", Toast.LENGTH_SHORT).show()
-                // Si es admin, solicitar código de mesa y continuar
-                solicitarCodigoMesaYContinuar(rol = "admin", usuarioId = 0) // Se podría usar un ID específico para el admin si está en la BD Usuarios
-                // No llamamos a finish() aquí, se llamará después de introducir la mesa
+                // Para el admin, navegamos directamente a su actividad (BarmanActivity)
+                val intent = Intent(this@LoginActivity, BarmanActivity::class.java)
+                intent.putExtra("rol", "admin")
+                intent.putExtra("usuario_id", 0) // Puedes usar un ID de admin predefinido
+                startActivity(intent)
+                finish() // Cerrar LoginActivity
             } else {
-                // Si no es el admin hardcodeado, verificar en la base de datos para usuarios normales
-                lifecycleScope.launch { // Iniciar una corutina para operaciones de base de datos (que son suspend)
-                    val usuarioDesdeDb = db.usuarioDao().getPorEmail(emailIngresado) // Buscar usuario por email
+                // Si no es el admin, verificar en la base de datos para usuarios normales
+                lifecycleScope.launch {
+                    val usuarioDesdeDb = db.usuarioDao().getPorEmail(emailIngresado)
 
-                    // Volver al hilo principal para interactuar con la UI (Toasts, navegación)
                     runOnUiThread {
                         if (usuarioDesdeDb != null && usuarioDesdeDb.contraseña == contraseñaIngresada) {
-                            // Usuario encontrado y contraseña correcta
                             Toast.makeText(this@LoginActivity, "Cliente Logueado", Toast.LENGTH_SHORT).show()
-                            // Cliente logueado, ahora solicitar código de mesa y continuar
+                            // Cliente logueado, solicitar código de mesa y continuar
                             solicitarCodigoMesaYContinuar(rol = usuarioDesdeDb.rol, usuarioId = usuarioDesdeDb.id_usuario)
-                            // No llamamos a finish() aquí
                         } else {
-                            // Usuario no encontrado o contraseña incorrecta
                             Toast.makeText(this@LoginActivity, "Credenciales incorrectas", Toast.LENGTH_SHORT).show()
                         }
                     }
@@ -79,93 +71,96 @@ class LoginActivity : AppCompatActivity() {
             }
         }
 
-        // Configurar el listener para el texto/botón de "Registrarse"
         binding.txtRegistro.setOnClickListener{
             val intent = Intent(this, RegistroActivity::class.java)
             startActivity(intent)
-            // No se llama a finish() para permitir al usuario volver a la pantalla de login desde el registro
         }
 
-        // Configurar el listener para el botón "Entrar como invitado"
-        // Este botón ahora también solicitará la mesa.
         binding.invitadoCarta.setOnClickListener{
             Toast.makeText(this, "Acceso como Invitado", Toast.LENGTH_SHORT).show()
             // Invitado, solicitar código de mesa y continuar
-            solicitarCodigoMesaYContinuar(rol = "invitado", usuarioId = 0) // Usamos 0 como ID para invitados (o un valor que no exista como ID real)
+            solicitarCodigoMesaYContinuar(rol = "invitado", usuarioId = 0)
         }
     }
 
     /**
      * Muestra un diálogo para que el usuario ingrese el código de mesa.
-     * Si la mesa no existe en la BD, la crea.
+     * Si la mesa no existe en la BD, la crea y la marca como "ocupada".
+     * Si la mesa existe, la actualiza a "ocupada" si no lo está ya.
      * Luego, lanza CartaActivity con el código de mesa, rol e id de usuario.
      * @param rol El rol del usuario ("admin", "cliente", "invitado").
      * @param usuarioId El ID del usuario (puede ser 0 o un ID especial para invitados/admin no registrado).
      */
     private fun solicitarCodigoMesaYContinuar(rol: String, usuarioId: Int) {
-        val builder = AlertDialog.Builder(this) // Crear el constructor del diálogo
-        builder.setTitle("Ingresar Código de Mesa") // Título del diálogo
-        builder.setMessage("Por favor, introduce el código de tu mesa:") // Mensaje/instrucción
+        val builder = AlertDialog.Builder(this)
+        builder.setTitle("Ingresar Código de Mesa")
+        builder.setMessage("Por favor, introduce el código de tu mesa:")
 
-        // Crear un EditText programáticamente para la entrada del usuario
         val input = EditText(this)
-        input.inputType = InputType.TYPE_CLASS_TEXT // Tipo de entrada: texto normal
-        builder.setView(input) // Añadir el EditText al diálogo
+        input.inputType = InputType.TYPE_CLASS_TEXT
+        builder.setView(input)
 
-        // Configurar el botón "Aceptar" del diálogo
         builder.setPositiveButton("Aceptar") { dialog, _ ->
-            val codigoMesaIngresado = input.text.toString().trim() // Obtener el texto y quitar espacios
+            val codigoMesaIngresado = input.text.toString().trim()
 
-            if (codigoMesaIngresado.isNotEmpty()) { // Verificar que se ingresó algo
-                lifecycleScope.launch { // Iniciar corutina para operaciones de BD
-                    var mesa = db.mesaDao().getMesaPorCodigoQR(codigoMesaIngresado) // Buscar la mesa en la BD
+            if (codigoMesaIngresado.isNotEmpty()) {
+                lifecycleScope.launch {
+                    var mesa = db.mesaDao().getMesaPorCodigoQR(codigoMesaIngresado)
 
-                    if (mesa == null) { // Si la mesa no existe...
+                    if (mesa == null) {
                         try {
-                            // ...intentar crearla y añadirla a la base de datos
-                            db.mesaDao().insertMesa(
-                                MesaEntity(
-                                    codigoQR = codigoMesaIngresado,
-                                    nombreMesa = codigoMesaIngresado // Usar el código como nombre por defecto
-                                    // 'estado' usará el valor por defecto "libre" de MesaEntity
-                                )
+                            // Si la mesa NO existe, la creamos y la marcamos como "ocupada"
+                            val nuevaMesa = MesaEntity(
+                                codigoQR = codigoMesaIngresado,
+                                nombreMesa = codigoMesaIngresado,
+                                estado = "ocupada" // <-- ¡Aquí se establece el estado "ocupada"!
                             )
-                            Log.i("TABLE_CREATION", "Mesa '$codigoMesaIngresado' creada y añadida a la BD.")
+                            db.mesaDao().insertMesa(nuevaMesa)
+                            mesa = nuevaMesa // Asignamos la nueva mesa a la variable 'mesa' para el siguiente paso
+                            Log.i("TABLE_CREATION", "Mesa '$codigoMesaIngresado' creada y añadida a la BD en estado 'ocupada'.")
                         } catch (e: Exception) {
                             Log.e("TABLE_CREATION", "Error al insertar nueva mesa '$codigoMesaIngresado'", e)
-                            // Si hay error al crear, mostrar Toast y no continuar a CartaActivity
                             runOnUiThread{ Toast.makeText(this@LoginActivity, "Error al crear la mesa", Toast.LENGTH_SHORT).show() }
                             return@launch
                         }
                     } else {
-                        // Si la mesa ya existía, solo registrar en Log
-                        Log.d("TABLE_INFO", "Mesa '$codigoMesaIngresado' ya existe en la BD.")
+                        // Si la mesa YA existe, la actualizamos a "ocupada" si no lo está ya
+                        if (mesa.estado != "ocupada") {
+                            mesa.estado = "ocupada" // <-- ¡Aquí se actualiza el estado a "ocupada"!
+                            try {
+                                db.mesaDao().updateMesa(mesa) // <-- Guardamos el cambio en la base de datos
+                                Log.d("TABLE_UPDATE", "Mesa '$codigoMesaIngresado' ya existe, actualizada a estado 'ocupada'.")
+                            } catch (e: Exception) {
+                                Log.e("TABLE_UPDATE", "Error al actualizar estado de mesa '$codigoMesaIngresado'", e)
+                                runOnUiThread{ Toast.makeText(this@LoginActivity, "Error al actualizar la mesa", Toast.LENGTH_SHORT).show() }
+                                return@launch
+                            }
+                        } else {
+                            Log.d("TABLE_INFO", "Mesa '$codigoMesaIngresado' ya existe y ya está en estado 'ocupada'.")
+                        }
                     }
 
-                    // Si todo fue bien (mesa existe o fue creada), lanzar CartaActivity
+                    // Si todo fue bien (mesa encontrada o creada y estado actualizado), lanzar CartaActivity
                     val intent = Intent(this@LoginActivity, CartaActivity::class.java)
-                    intent.putExtra("mesa", codigoMesaIngresado) // Pasar código de mesa
-                    intent.putExtra("rol", rol)                   // Pasar rol del usuario
-                    intent.putExtra("usuario_id", usuarioId)      // Pasar ID del usuario
+                    intent.putExtra("mesa", codigoMesaIngresado)
+                    intent.putExtra("rol", rol)
+                    intent.putExtra("usuario_id", usuarioId)
                     startActivity(intent)
                     finish() // Cerrar LoginActivity después de navegar a CartaActivity
                 }
                 dialog.dismiss() // Cerrar el diálogo
             } else {
-                // Si no se ingresó texto, mostrar mensaje
                 Toast.makeText(this, "Debes ingresar un código de mesa", Toast.LENGTH_SHORT).show()
                 // Opcional: podrías volver a llamar a solicitarCodigoMesaYContinuar() aquí para que reintente.
             }
         }
-        // Configurar el botón "Cancelar" del diálogo
         builder.setNegativeButton("Cancelar") { dialog, _ ->
-            dialog.cancel() // Simplemente cierra el diálogo
-            // Podrías añadir lógica aquí si quieres que pase algo más al cancelar (ej. no cerrar LoginActivity)
+            dialog.cancel()
         }
 
         val alert = builder.create()
-        alert.setCancelable(false) // Impedir que el diálogo se cierre al tocar fuera
-        alert.setCanceledOnTouchOutside(false) // Impedir que el diálogo se cierre con el botón "atrás" del sistema (opcional)
-        alert.show() // Mostrar el diálogo
+        alert.setCancelable(false)
+        alert.setCanceledOnTouchOutside(false)
+        alert.show()
     }
 }

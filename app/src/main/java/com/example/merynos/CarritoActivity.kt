@@ -20,7 +20,6 @@ import com.example.merynos.room.PuntosDao
 import com.example.merynos.room.PuntosEntity
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
-import java.util.Date
 import java.util.Locale
 
 class CarritoActivity : AppCompatActivity(), CarritoAdapter.OnCantidadChangeListener {
@@ -35,7 +34,7 @@ class CarritoActivity : AppCompatActivity(), CarritoAdapter.OnCantidadChangeList
     private lateinit var carritoAdapter: CarritoAdapter
     private val listaItemsCarrito = mutableListOf<ItemCarrito>()
     private lateinit var puntosDao: PuntosDao
-    private var cuponSeleccionado: String? = null
+    private var cuponSeleccionado: String? = null // Guarda el cupón activo para esta instancia de CarritoActivity
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -52,20 +51,23 @@ class CarritoActivity : AppCompatActivity(), CarritoAdapter.OnCantidadChangeList
 
         puntosDao = db.puntosDao()
 
-        pedidoIdActual = if (intent.hasExtra("ID_PEDIDO_ACTUAL")) intent.getIntExtra("ID_PEDIDO_ACTUAL", -1) else null
+        pedidoIdActual = intent.getIntExtra("ID_PEDIDO_ACTUAL", -1)
         if (pedidoIdActual == -1) pedidoIdActual = null
 
-        idMesaCarrito = if (intent.hasExtra("ID_MESA_CARRITO")) intent.getIntExtra("ID_MESA_CARRITO", -1) else null
+        idMesaCarrito = intent.getIntExtra("ID_MESA_CARRITO", -1)
         if (idMesaCarrito == -1) idMesaCarrito = null
 
-        idUsuarioCarrito = if (intent.hasExtra("ID_USUARIO_CARRITO")) intent.getIntExtra("ID_USUARIO_CARRITO", -1) else null
-        if (idUsuarioCarrito == -1 && idUsuarioCarrito != 0) idUsuarioCarrito = null
+        idUsuarioCarrito = intent.getIntExtra("ID_USUARIO_CARRITO", -1)
+        // Ajuste: si el idUsuarioCarrito es 0 (ej. invitado), lo consideramos null para la lógica de puntos.
+        if (idUsuarioCarrito == -1 || idUsuarioCarrito == 0) {
+            idUsuarioCarrito = null
+        }
 
         nombreMesaCarrito = intent.getStringExtra("NOMBRE_MESA_CARRITO") ?: "Mesa Desconocida"
 
         setupRecyclerView()
         cargarDatosDelCarrito()
-        actualizarPuntosUsuarioUI()
+        actualizarPuntosUsuarioUI() // Cargar y mostrar puntos al iniciar la actividad
 
         binding.txtTituloCarrito?.text = "Carrito - $nombreMesaCarrito"
         binding.txtMesaCarrito?.text = "Mesa: $nombreMesaCarrito"
@@ -73,7 +75,16 @@ class CarritoActivity : AppCompatActivity(), CarritoAdapter.OnCantidadChangeList
         binding.txtTotalCarrito.text = "Total: €0.00"
 
         binding.btnCanjearPuntos?.setOnClickListener {
-            mostrarOpcionesCanjePuntos()
+            // Solo permitir canjear si hay un usuario logueado con ID y no hay un cupón ya aplicado
+            if (idUsuarioCarrito != null) {
+                if (cuponSeleccionado == null) {
+                    mostrarOpcionesCanjePuntos()
+                } else {
+                    Toast.makeText(this, "Ya tienes un cupón aplicado. No son acumulables.", Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                Toast.makeText(this, "Inicia sesión para canjear puntos.", Toast.LENGTH_SHORT).show()
+            }
         }
 
         binding.btnConfirmarPedido.setOnClickListener {
@@ -97,12 +108,19 @@ class CarritoActivity : AppCompatActivity(), CarritoAdapter.OnCantidadChangeList
     override fun onResume() {
         super.onResume()
         actualizarPuntosUsuarioUI()
+        actualizarTotalCarrito()
     }
 
     fun actualizarPuntosUsuarioUI() {
-        lifecycleScope.launch {
-            val puntos = obtenerPuntosUsuario()
-            binding.txtPuntosUsuario?.text = "Tus puntos: $puntos"
+        if (idUsuarioCarrito != null) {
+            lifecycleScope.launch {
+                val puntos = obtenerPuntosUsuario()
+                runOnUiThread {
+                    binding.txtPuntosUsuario?.text = "Tus puntos: $puntos"
+                }
+            }
+        } else {
+            binding.txtPuntosUsuario?.text = "Tus puntos: N/A"
         }
     }
 
@@ -110,15 +128,24 @@ class CarritoActivity : AppCompatActivity(), CarritoAdapter.OnCantidadChangeList
         return puntosDao.obtenerTotalPuntos(idUsuarioCarrito ?: -1) ?: 0
     }
 
-    suspend fun registrarCanje(puntosCanjeados: Int) {
+    // --- FUNCIÓN ÚNICA para registrar transacciones de puntos ---
+    // Esta función ahora también calcula el 'puntosTotales' para la entidad.
+    suspend fun registrarTransaccionPuntos(puntosCambio: Int) {
+        val idUsuario = idUsuarioCarrito ?: return
+
+        // Obtiene el saldo actual ANTES de la nueva transacción
         val puntosActuales = obtenerPuntosUsuario()
-        val canje = PuntosEntity(
-            id_usuario = idUsuarioCarrito ?: -1,
-            puntos = -puntosCanjeados,
-            puntosTotales = puntosActuales - puntosCanjeados
+        // Calcula el nuevo saldo total
+        val nuevoPuntosTotales = puntosActuales + puntosCambio
+
+        val transaccion = PuntosEntity(
+            id_usuario = idUsuario,
+            puntos = puntosCambio, // El cambio de puntos (positivo o negativo)
+            puntosTotales = nuevoPuntosTotales // El saldo total DESPUÉS de este cambio
         )
-        puntosDao.registrarCanjePuntos(canje)
+        puntosDao.insertarPuntos(transaccion)
     }
+    // -----------------------------------------------------------
 
     fun mostrarOpcionesCanjePuntos() {
         val puntosUsuarioDeferred = lifecycleScope.async { obtenerPuntosUsuario() }
@@ -146,28 +173,46 @@ class CarritoActivity : AppCompatActivity(), CarritoAdapter.OnCantidadChangeList
             } else {
                 builder.setItems(opciones.toTypedArray()) { dialog, which ->
                     lifecycleScope.launch {
+                        val puntosACanjear: Int
+                        val tipoCupon: String
+
                         when (opciones[which]) {
                             "20 puntos - Cupón 10% (compra > 20€)" -> {
-                                cuponSeleccionado = "10_PORCIENTO"
-                                registrarCanje(20)
-                                actualizarTotalCarrito()
-                                actualizarPuntosUsuarioUI()
-                                Toast.makeText(this@CarritoActivity, "Cupón del 10% aplicado.", Toast.LENGTH_SHORT).show()
+                                puntosACanjear = 20
+                                tipoCupon = "10_PORCIENTO"
                             }
                             "50 puntos - Cupón 20% (compra > 50€)" -> {
-                                cuponSeleccionado = "20_PORCIENTO"
-                                registrarCanje(50)
-                                actualizarTotalCarrito()
-                                actualizarPuntosUsuarioUI()
-                                Toast.makeText(this@CarritoActivity, "Cupón del 20% aplicado.", Toast.LENGTH_SHORT).show()
+                                puntosACanjear = 50
+                                tipoCupon = "20_PORCIENTO"
                             }
                             "100 puntos - Cupón 15% en cada cóctel (compra > 100€)" -> {
-                                cuponSeleccionado = "15_PORCIENTO_COCTEL"
-                                registrarCanje(100)
-                                actualizarTotalCarrito()
-                                actualizarPuntosUsuarioUI()
-                                Toast.makeText(this@CarritoActivity, "Cupón del 15% en cada cóctel aplicado.", Toast.LENGTH_SHORT).show()
+                                puntosACanjear = 100
+                                tipoCupon = "15_PORCIENTO_COCTEL"
                             }
+                            else -> {
+                                return@launch
+                            }
+                        }
+
+                        val puntosActualesAntesDeCanje = obtenerPuntosUsuario()
+                        if (puntosActualesAntesDeCanje < puntosACanjear) {
+                            runOnUiThread {
+                                Toast.makeText(this@CarritoActivity, "Puntos insuficientes para este cupón.", Toast.LENGTH_SHORT).show()
+                            }
+                            dialog.dismiss()
+                            return@launch
+                        }
+
+                        // --- Registrar el canje de puntos con un valor NEGATIVO ---
+                        registrarTransaccionPuntos(-puntosACanjear) // Los puntos se restan aquí
+                        // ----------------------------------------------------------
+
+                        cuponSeleccionado = tipoCupon // Establece el cupón para aplicarlo
+
+                        runOnUiThread {
+                            Toast.makeText(this@CarritoActivity, "Cupón aplicado: $tipoCupon. Puntos restados.", Toast.LENGTH_SHORT).show()
+                            actualizarPuntosUsuarioUI()
+                            actualizarTotalCarrito()
                         }
                         dialog.dismiss()
                     }
@@ -193,7 +238,7 @@ class CarritoActivity : AppCompatActivity(), CarritoAdapter.OnCantidadChangeList
             if (pedidoIdActual != null) {
                 pedidoParaMostrar = db.pedidoDao().obtenerPedidoPorId(pedidoIdActual!!)
             } else if (idMesaCarrito != null && idUsuarioCarrito != null) {
-                val idUsuarioNonNull = idUsuarioCarrito ?: 0
+                val idUsuarioNonNull = idUsuarioCarrito!!
                 pedidoParaMostrar = db.pedidoDao()
                     .obtenerPorMesaYEstado(idMesaCarrito!!, "pendiente")
                     .find { it.id_usuario == idUsuarioNonNull }
@@ -279,8 +324,24 @@ class CarritoActivity : AppCompatActivity(), CarritoAdapter.OnCantidadChangeList
             .setMessage("¿Estás seguro de que quieres enviar este pedido a preparación?")
             .setPositiveButton("Confirmar") { dialog, _ ->
                 lifecycleScope.launch {
+                    // 1. Actualizar el estado del pedido a "confirmado"
                     db.pedidoDao().actualizarEstado(pedidoIdActual!!, "confirmado")
-                    // Aquí podrías enviar el cuponSeleccionado con la información del pedido
+
+                    // 2. Calcular los puntos obtenidos en esta compra
+                    val totalCompraActual = listaItemsCarrito.sumOf { it.cantidad * it.precioUnitario }
+                    val puntosObtenidos = calcularPuntosPorCompra(totalCompraActual)
+
+                    // 3. Registrar los puntos obtenidos (transacción POSITIVA)
+                    if (idUsuarioCarrito != null) {
+                        registrarTransaccionPuntos(puntosObtenidos) // Los puntos se suman aquí
+                        runOnUiThread {
+                            Toast.makeText(this@CarritoActivity, "¡Has ganado $puntosObtenidos puntos!", Toast.LENGTH_LONG).show()
+                        }
+                    }
+
+                    // 4. Resetear el cupón seleccionado para el próximo pedido del usuario
+                    cuponSeleccionado = null
+
                     runOnUiThread {
                         Toast.makeText(this@CarritoActivity, "Pedido confirmado y enviado", Toast.LENGTH_LONG).show()
                         setResult(Activity.RESULT_OK)
@@ -309,18 +370,31 @@ class CarritoActivity : AppCompatActivity(), CarritoAdapter.OnCantidadChangeList
         }
 
         var totalFinal = totalSinDescuento
+        // Aplicar descuento solo si hay un cupón seleccionado Y la compra cumple los requisitos mínimos
         if (cuponSeleccionado != null) {
             when (cuponSeleccionado) {
-                "10_PORCIENTO" -> if (totalSinDescuento > 20) totalFinal *= 0.90
-                "20_PORCIENTO" -> if (totalSinDescuento > 50) totalFinal *= 0.80
-                "15_PORCIENTO_COCTEL" -> if (totalSinDescuento > 100) {
-                    totalFinal = 0.0
-                    for (item in listaItemsCarrito) {
-                        totalFinal += item.cantidad * (item.precioUnitario * 0.85)
-                    }
+                "10_PORCIENTO" -> {
+                    if (totalSinDescuento >= 20) totalFinal *= 0.90
+                    else Toast.makeText(this, "Compra mínima de 20€ para el 10% no alcanzada.", Toast.LENGTH_SHORT).show()
+                }
+                "20_PORCIENTO" -> {
+                    if (totalSinDescuento >= 50) totalFinal *= 0.80
+                    else Toast.makeText(this, "Compra mínima de 50€ para el 20% no alcanzada.", Toast.LENGTH_SHORT).show()
+                }
+                "15_PORCIENTO_COCTEL" -> {
+                    if (totalSinDescuento >= 100) {
+                        totalFinal = 0.0
+                        for (item in listaItemsCarrito) {
+                            totalFinal += item.cantidad * (item.precioUnitario * 0.85)
+                        }
+                    } else Toast.makeText(this, "Compra mínima de 100€ para el 15% en cócteles no alcanzada.", Toast.LENGTH_SHORT).show()
                 }
             }
         }
         binding.txtTotalCarrito.text = "Total: €%.2f".format(totalFinal)
+    }
+
+    private fun calcularPuntosPorCompra(totalCompra: Double): Int {
+        return (totalCompra / 2).toInt()
     }
 }

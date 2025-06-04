@@ -5,9 +5,9 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
-import androidx.room.Room // Necesario si inicializas DB aquí
-import com.example.merynos.BaseDatos.AppDatabase // Importa tu AppDatabase
-import com.example.merynos.databinding.ActivityAddEditCoctelBinding // ViewBinding para el nuevo layout
+import androidx.room.Room
+import com.example.merynos.BaseDatos.AppDatabase
+import com.example.merynos.databinding.ActivityAddEditCoctelBinding
 import com.example.merynos.room.CoctelEntity
 import kotlinx.coroutines.launch
 
@@ -46,20 +46,29 @@ class AddEditCoctelActivity : AppCompatActivity() {
             // No es necesario hacer nada más para el modo "Añadir", el formulario está vacío.
         }
 
+        // Listener para el botón de Guardar
         binding.btnGuardarCoctelForm.setOnClickListener {
             guardarCoctel()
         }
+
+        // --- Nuevo Listener para el botón Cancelar ---
+        binding.btnCancelarCoctelForm.setOnClickListener {
+            // Simplemente finaliza esta actividad, volviendo a la anterior sin guardar cambios
+            finish()
+        }
+        // ---------------------------------------------
     }
 
     private fun cargarDatosCoctelParaEdicion(idCoctel: Int) {
         lifecycleScope.launch {
-            val coctel = db.coctelDao().getCoctelPorId(idCoctel) // Asegúrate que getCoctelPorId existe y es suspend
+            val coctel = db.coctelDao().getCoctelPorId(idCoctel)
             if (coctel != null) {
                 runOnUiThread {
                     binding.etNombreCoctelForm.setText(coctel.nombreCoctel)
                     binding.etHistoriaForm.setText(coctel.historia)
                     binding.etMetodoForm.setText(coctel.metodoElaboracion)
-                    binding.etPrecioForm.setText(coctel.precioCoctel.toString())
+                    // Asegúrate de que el precio se muestra correctamente, a veces Double necesita un formato específico
+                    binding.etPrecioForm.setText(String.format("%.2f", coctel.precioCoctel))
                 }
             } else {
                 runOnUiThread {
@@ -72,7 +81,7 @@ class AddEditCoctelActivity : AppCompatActivity() {
 
     private fun guardarCoctel() {
         val nombre = binding.etNombreCoctelForm.text.toString().trim()
-        val historia = binding.etHistoriaForm.text.toString().trim() // Opcional, puede estar vacío
+        val historia = binding.etHistoriaForm.text.toString().trim()
         val metodo = binding.etMetodoForm.text.toString().trim()
         val precioStr = binding.etPrecioForm.text.toString().trim()
 
@@ -106,12 +115,12 @@ class AddEditCoctelActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 if (currentCoctelId != null) { // Editando
-                    db.coctelDao().updateCoctel(coctelParaGuardar) // Asegúrate que updateCoctel existe y es suspend
+                    db.coctelDao().updateCoctel(coctelParaGuardar)
                     runOnUiThread {
                         Toast.makeText(this@AddEditCoctelActivity, "Cóctel actualizado", Toast.LENGTH_SHORT).show()
                     }
                 } else { // Añadiendo
-                    db.coctelDao().insertCoctel(coctelParaGuardar) // Asegúrate que insertCoctel existe y es suspend
+                    db.coctelDao().insertCoctel(coctelParaGuardar)
                     runOnUiThread {
                         Toast.makeText(this@AddEditCoctelActivity, "Cóctel añadido", Toast.LENGTH_SHORT).show()
                     }
