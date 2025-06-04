@@ -1,18 +1,18 @@
-package com.example.merynos // O el nombre de tu paquete
+package com.example.merynos
 
 import android.content.Intent
 import android.os.Bundle
-import android.text.InputType // Para el EditText del diálogo
-import android.util.Log      // Para los mensajes de Log
-import android.widget.EditText // Para el EditText del diálogo
+import android.text.InputType
+import android.util.Log
+import android.widget.EditText
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog // Para el diálogo emergente
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.room.Room
 import com.example.merynos.BaseDatos.AppDatabase
 import com.example.merynos.databinding.ActivityMainBinding
-import com.example.merynos.room.CoctelEntity   // Asegúrate de importar CoctelEntity
+import com.example.merynos.room.CoctelEntity
 import com.example.merynos.room.MesaEntity
 import com.example.merynos.room.UsuarioEntity
 import com.google.zxing.integration.android.IntentIntegrator
@@ -21,23 +21,21 @@ import kotlinx.coroutines.launch
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
-    private lateinit var db: AppDatabase // db como propiedad de la clase
+    private lateinit var db: AppDatabase
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Inicializar db como propiedad de la clase
         db = Room.databaseBuilder(
             applicationContext,
             AppDatabase::class.java,
             "merynos.db"
         )
-            .fallbackToDestructiveMigration() // RECOMENDADO durante el desarrollo
+            .fallbackToDestructiveMigration()
             .build()
 
-        // Lanzar corutina para operaciones de base de datos iniciales
         lifecycleScope.launch {
             // Insertar barman si no existe
             val barman = db.usuarioDao().getPorEmail("barman@merynos.com")
@@ -46,7 +44,7 @@ class MainActivity : AppCompatActivity() {
                     UsuarioEntity(
                         nombreYApellidos = "Barman Prueba",
                         email = "barman@merynos.com",
-                        contraseña = "1234", // Considera hashear contraseñas
+                        contraseña = "1234",
                         rol = "barman"
                     )
                 )
@@ -55,26 +53,29 @@ class MainActivity : AppCompatActivity() {
                 Log.d("DB_INIT", "Usuario Barman ya existe.")
             }
 
-            // Insertar Mesa 2 si no existe (usando getMesaPorCodigoQR)
-            val mesaExistente = db.mesaDao().getMesaPorCodigoQR("Mesa 2") // Asegúrate que esta función existe en MesaDao
+            // --- CORRECCIÓN AQUÍ: Proporcionar un ID a la Mesa de Prueba ---
+            val codigoQR_mesa_prueba = "2" // <-- Código QR numérico para la mesa de prueba
+            val id_mesa_prueba = codigoQR_mesa_prueba.toInt() // <-- Convierte el QR a Int para el ID
+
+            val mesaExistente = db.mesaDao().getMesaPorCodigoQR(codigoQR_mesa_prueba)
             if (mesaExistente == null) {
                 db.mesaDao().insertMesa(
                     MesaEntity(
-                        codigoQR = "Mesa 2",
-                        nombreMesa = "Mesa Principal 2"
-                        // 'estado' usará el valor por defecto "libre"
+                        id_mesa = id_mesa_prueba, // <-- ¡Asignamos el ID aquí!
+                        codigoQR = codigoQR_mesa_prueba,
+                        nombreMesa = "Mesa Principal $codigoQR_mesa_prueba", // Nombre descriptivo
+                        estado = "libre" // Por defecto es libre
                     )
                 )
-                Log.i("DB_INIT", "Mesa 'Mesa 2' de prueba insertada.")
+                Log.i("DB_INIT", "Mesa '$codigoQR_mesa_prueba' (ID: $id_mesa_prueba) de prueba insertada.")
             } else {
-                Log.d("DB_INIT", "Mesa 'Mesa 2' ya existe.")
+                Log.d("DB_INIT", "Mesa '$codigoQR_mesa_prueba' ya existe.")
             }
+            // -------------------------------------------------------------
 
-            // Poblar cócteles de prueba (la función está definida abajo y ahora es suspend)
-            poblarCoctelesDePrueba() // Llamar a la función suspend desde la corutina
+            poblarCoctelesDePrueba()
         }
 
-        // Botón de invitado → escanear QR
         binding.btnInvitado.setOnClickListener {
             val integrator = IntentIntegrator(this)
             integrator.setPrompt("Escanea el código QR de la mesa")
@@ -83,13 +84,10 @@ class MainActivity : AppCompatActivity() {
             integrator.initiateScan()
         }
 
-        // Botón de login
         binding.btnLogin.setOnClickListener {
             startActivity(Intent(this, LoginActivity::class.java))
         }
 
-        // Botón para Entrada Manual de Mesa
-        // ASEGÚRATE de que este botón con id "btnEntradaManualMesa" existe en tu activity_main.xml
         binding.btnEntradaManualMesa.setOnClickListener {
             mostrarDialogoEntradaManualMesa()
         }
@@ -98,25 +96,33 @@ class MainActivity : AppCompatActivity() {
     private fun mostrarDialogoEntradaManualMesa() {
         val builder = AlertDialog.Builder(this)
         builder.setTitle("Ingresar Código de Mesa")
-        builder.setMessage("Por favor, introduce el código de tu mesa:")
+        builder.setMessage("Por favor, introduce el código de tu mesa (número):") // Indicamos que debe ser un número
 
         val input = EditText(this)
-        input.inputType = InputType.TYPE_CLASS_TEXT
+        input.inputType = InputType.TYPE_CLASS_NUMBER // <-- ¡Solo números!
         builder.setView(input)
 
         builder.setPositiveButton("Aceptar") { dialog, _ ->
-            val codigoMesaIngresado = input.text.toString().trim()
-            if (codigoMesaIngresado.isNotEmpty()) {
-                Log.d("MANUAL_TABLE_ENTRY", "Mesa ingresada manually: $codigoMesaIngresado")
-                val intent = Intent(this, CartaActivity::class.java)
-                intent.putExtra("mesa", codigoMesaIngresado)
-                intent.putExtra("rol", "invitado")
-                intent.putExtra("usuario_id", 0)
-                startActivity(intent)
-                dialog.dismiss()
-            } else {
+            val codigoMesaStr = input.text.toString().trim()
+
+            if (codigoMesaStr.isEmpty()) {
                 Toast.makeText(this, "Debes ingresar un código de mesa", Toast.LENGTH_SHORT).show()
+                return@setPositiveButton
             }
+
+            val idMesa: Int? = codigoMesaStr.toIntOrNull() // Intentamos convertir a Int
+            if (idMesa == null || idMesa <= 0) { // Validamos que sea un número válido y positivo
+                Toast.makeText(this, "El código de mesa debe ser un número entero positivo.", Toast.LENGTH_SHORT).show()
+                return@setPositiveButton
+            }
+
+            Log.d("MANUAL_TABLE_ENTRY", "Mesa ingresada manually: $codigoMesaStr (ID: $idMesa)")
+            val intent = Intent(this, CartaActivity::class.java)
+            intent.putExtra("mesa", codigoMesaStr) // Pasamos el código QR como String
+            intent.putExtra("rol", "invitado")
+            intent.putExtra("usuario_id", 0)
+            startActivity(intent)
+            dialog.dismiss()
         }
         builder.setNegativeButton("Cancelar") { dialog, _ ->
             dialog.cancel()
@@ -130,9 +136,15 @@ class MainActivity : AppCompatActivity() {
         if (result != null) {
             if (result.contents != null) {
                 val mesaCodigoQR = result.contents
-                Log.d("QR_SCAN", "QR Escaneado: $mesaCodigoQR")
+                val idMesaQR: Int? = mesaCodigoQR.toIntOrNull() // Convertir a Int
+                if (idMesaQR == null || idMesaQR <= 0) {
+                    Toast.makeText(this, "Código QR inválido. Debe ser un número de mesa válido.", Toast.LENGTH_LONG).show()
+                    return // No continuar si el QR no es un número válido
+                }
+
+                Log.d("QR_SCAN", "QR Escaneado: $mesaCodigoQR (ID: $idMesaQR)")
                 val intent = Intent(this, CartaActivity::class.java)
-                intent.putExtra("mesa", mesaCodigoQR)
+                intent.putExtra("mesa", mesaCodigoQR) // Pasamos el String del QR
                 intent.putExtra("rol", "invitado")
                 intent.putExtra("usuario_id", 0)
                 startActivity(intent)
@@ -142,11 +154,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // --- FUNCIÓN MODIFICADA A 'suspend fun' ---
-    private suspend fun poblarCoctelesDePrueba() { // <--- AÑADIDO 'suspend'
+    private suspend fun poblarCoctelesDePrueba() {
         val coctelDao = db.coctelDao()
 
-        if (coctelDao.getAll().isEmpty()) { // Ahora getAll() se llama desde una función suspend
+        if (coctelDao.getAll().isEmpty()) {
             Log.d("DB_POBLAR", "Tabla Cocteles vacía. Insertando datos de prueba...")
             try {
                 val coctel1 = CoctelEntity(
@@ -174,7 +185,7 @@ class MainActivity : AppCompatActivity() {
                     precioCoctel = 8.50
                 )
 
-                coctelDao.insertAll(coctel1, coctel2, coctel3, coctel4) // insertAll() se llama desde una función suspend
+                coctelDao.insertAll(coctel1, coctel2, coctel3, coctel4)
                 Log.i("DB_POBLAR", "¡Cócteles de prueba (con historias largas) insertados exitosamente!")
 
             } catch (e: Exception) {

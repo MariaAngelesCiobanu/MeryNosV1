@@ -46,6 +46,17 @@
                 android:textSize="16sp"
                 android:gravity="center"
                 android:textColor="#666666"
+                android:layout_marginBottom="4dp" />
+
+            <TextView
+                android:id="@+id/txtPuntosUsuario"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Tus puntos: 0"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:textColor="#006400"
                 android:layout_marginBottom="20dp" />
 
             <androidx.recyclerview.widget.RecyclerView
@@ -78,13 +89,15 @@
             android:text="Ver Mi Pedido / Carrito"
             android:textSize="16sp"
             android:layout_marginTop="8dp"
-            android:backgroundTint="#B02E46" android:textColor="#FFFFFF"
+            android:backgroundTint="#B02E46"
+            android:textColor="#FFFFFF"
             android:fontFamily="sans-serif-medium" />
+
         <Button
-            android:id="@+id/btnVolverLogin"
+            android:id="@+id/btnCerrarSesion"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Volver al inicio"
+            android:text="Cerrar Sesión"
             android:textSize="16sp"
             android:layout_marginTop="12dp"
             android:backgroundTint="#B02E46"
