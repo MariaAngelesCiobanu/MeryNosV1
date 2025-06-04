@@ -8,20 +8,21 @@ import androidx.room.Update
 
 @Dao
 interface MesaDao {
-    @Query("SELECT * FROM Mesa WHERE codigoQR = :codigo LIMIT 1")
-    suspend fun getMesaPorCodigo(codigo: String): MesaEntity?
-
-    // Usaremos REPLACE para que si insertamos una mesa con un ID existente, se reemplace.
-    // Esto es útil si una mesa se "elimina" y se vuelve a crear con el mismo QR/ID.
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertMesa(mesa: MesaEntity) // Ya no devuelve Long
-
+    // Método para encontrar una mesa por su código QR (String)
     @Query("SELECT * FROM Mesa WHERE codigoQR = :codigoQR LIMIT 1")
     suspend fun getMesaPorCodigoQR(codigoQR: String): MesaEntity?
 
+    // Insertar una nueva mesa. El id_mesa LO PROPORCIONAMOS NOSOTROS.
+    // OnConflictStrategy.REPLACE: Si el id_mesa (que es el codigoQR) ya existe,
+    // se reemplaza la fila existente.
+    @Insert(onConflict = OnConflictStrategy.REPLACE) // <-- ¡Importante!
+    suspend fun insertMesa(mesa: MesaEntity) // <-- ¡Ya NO devuelve Long!
+
+    // Obtener todas las mesas
     @Query("SELECT * FROM Mesa ORDER BY nombreMesa ASC")
     suspend fun getAllMesas(): List<MesaEntity>
 
+    // Actualizar una mesa existente
     @Update
     suspend fun updateMesa(mesa: MesaEntity)
 }

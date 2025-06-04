@@ -18,7 +18,7 @@ import com.example.merynos.BaseDatos.adapter.ItemCoctel
 import com.example.merynos.R
 import com.example.merynos.databinding.ActivityCartaBinding
 import com.example.merynos.room.DetallePedidoEntity
-import com.example.merynos.room.MesaEntity // <-- Importa MesaEntity
+import com.example.merynos.room.MesaEntity
 import com.example.merynos.room.PedidoEntity
 import com.example.merynos.room.PuntosDao
 import kotlinx.coroutines.launch
@@ -28,8 +28,8 @@ class CartaActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityCartaBinding
     private lateinit var db: AppDatabase
-    private var idMesaGlobal: Int? = null // Ahora será el ID de la mesa
-    private var codigoMesaQRGlobal: String? = null // Para guardar el código QR como String
+    private var idMesaGlobal: Int? = null // Ahora será el ID numérico de la mesa (autogenerado)
+    private var codigoMesaQRGlobal: String? = null // Para guardar el código QR como String (lo que el usuario ingresó)
     private var idUsuarioActual: Int? = null
     private var esAdmin: Boolean = false
     private lateinit var puntosDao: PuntosDao
@@ -37,8 +37,7 @@ class CartaActivity : AppCompatActivity() {
     private val addEditCoctelActivityResultLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == Activity.RESULT_OK) {
-                // Al volver de AddEditCoctelActivity, recargamos la carta y los puntos
-                cargarDatosDeLaCarta(codigoMesaQRGlobal) // Usar el código QR global
+                cargarDatosDeLaCarta(codigoMesaQRGlobal)
                 actualizarPuntosUsuarioUI()
             }
         }
@@ -66,27 +65,24 @@ class CartaActivity : AppCompatActivity() {
 
         esAdmin = (rolUsuario == "admin")
 
-        val codigoMesaIntent = intent.getStringExtra("mesa") // Viene como String (el QR)
+        // --- CAMBIOS AQUÍ: Recibir los nuevos extras del Intent desde LoginActivity ---
+        val idMesaFromLogin = intent.getIntExtra("mesa_id", -1) // Recibe el ID numérico autogenerado
+        val codigoQRFromLogin = intent.getStringExtra("mesa_qr") // Recibe el código QR como String
+        // -----------------------------------------------------------------------------
 
         if (esAdmin) {
             binding.txtMesa.text = "📍 Administración de Cócteles"
             binding.txtPuntosUsuario.visibility = View.GONE
-            binding.btnVerCarrito.visibility = View.GONE // Admin en modo gestión no usa carrito
-            binding.btnCerrarSesion.text = "Volver al Panel Admin" // Cambia el texto del botón
+            binding.btnVerCarrito.visibility = View.GONE
+            binding.btnCerrarSesion.text = "Volver al Panel Admin"
             cargarDatosDeLaCarta(null) // Admin ve todos los cócteles
-        } else if (codigoMesaIntent != null) {
-            // Convertimos el String del QR a Int para idMesaGlobal
-            idMesaGlobal = codigoMesaIntent.toIntOrNull()
-            if (idMesaGlobal == null) {
-                Toast.makeText(this, "Error: Código de mesa inválido.", Toast.LENGTH_LONG).show()
-                finish()
-                return
-            }
-            codigoMesaQRGlobal = codigoMesaIntent // Guardamos el String del QR
+        } else if (idMesaFromLogin != -1 && codigoQRFromLogin != null) { // Si hay ID de mesa y QR válidos
+            idMesaGlobal = idMesaFromLogin // Guardamos el ID numérico autogenerado
+            codigoMesaQRGlobal = codigoQRFromLogin // Guardamos el código QR como String
             binding.txtMesa.text = "📍 $codigoMesaQRGlobal"
             binding.txtPuntosUsuario.visibility = View.VISIBLE
             actualizarPuntosUsuarioUI()
-            cargarDatosDeLaCarta(codigoMesaQRGlobal)
+            cargarDatosDeLaCarta(codigoMesaQRGlobal) // Cargar la carta usando el código QR (String)
         } else {
             Toast.makeText(this, "Error: Mesa no especificada o acceso inválido.", Toast.LENGTH_LONG).show()
             binding.txtPuntosUsuario.visibility = View.GONE
@@ -117,7 +113,7 @@ class CartaActivity : AppCompatActivity() {
 
             lifecycleScope.launch {
                 val pedidoPendiente = db.pedidoDao()
-                    .obtenerPorMesaYEstado(idMesaGlobal!!, "pendiente")
+                    .obtenerPorMesaYEstado(idMesaGlobal!!, "pendiente") // Usar idMesaGlobal (Int)
                     .find { it.id_usuario == idUsuarioActual!! }
 
                 val intent = Intent(this@CartaActivity, CarritoActivity::class.java)
@@ -127,23 +123,22 @@ class CartaActivity : AppCompatActivity() {
                 } else {
                     Log.d("CartaActivity", "Abriendo carrito, no hay pedido pendiente. Pasando IDs de mesa/usuario.")
                 }
-                intent.putExtra("ID_MESA_CARRITO", codigoMesaQRGlobal) // Pasa el código QR como String
+                // --- CAMBIOS AQUÍ: Pasar el ID numérico y el String del QR a CarritoActivity ---
+                intent.putExtra("ID_MESA_CARRITO", idMesaGlobal) // Pasa el ID numérico autogenerado de la mesa
+                intent.putExtra("NOMBRE_MESA_CARRITO", codigoMesaQRGlobal) // Pasa el código QR (String)
+                // -------------------------------------------------------------------------------
                 intent.putExtra("ID_USUARIO_CARRITO", idUsuarioActual)
-                intent.putExtra("NOMBRE_MESA_CARRITO", binding.txtMesa.text.toString().substringAfter("📍").trim())
                 startActivity(intent)
             }
         }
 
-        // --- Lógica del botón "Cerrar Sesión" (o "Volver al Panel Admin") ---
         binding.btnCerrarSesion.setOnClickListener {
             if (esAdmin) {
-                // Si es admin, simplemente vuelve a BarmanActivity
                 val intent = Intent(this@CartaActivity, BarmanActivity::class.java)
                 intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                 startActivity(intent)
                 finish()
             } else {
-                // Si es un cliente/invitado, liberar la mesa y volver al Login
                 liberarMesaYVolverLogin()
             }
         }
@@ -156,18 +151,17 @@ class CartaActivity : AppCompatActivity() {
         } else if (esAdmin) {
             binding.txtPuntosUsuario.visibility = View.GONE
         }
-        cargarDatosDeLaCarta(codigoMesaQRGlobal) // Recargar la carta al volver
+        cargarDatosDeLaCarta(codigoMesaQRGlobal)
     }
 
-    // --- Función para liberar la mesa y volver al Login ---
     private fun liberarMesaYVolverLogin() {
         if (codigoMesaQRGlobal != null) {
             lifecycleScope.launch {
                 try {
                     val mesa = db.mesaDao().getMesaPorCodigoQR(codigoMesaQRGlobal!!)
-                    if (mesa != null && mesa.estado == "ocupada") { // Solo liberar si está ocupada
-                        mesa.estado = "libre" // <-- Cambiar el estado a "libre"
-                        db.mesaDao().updateMesa(mesa) // <-- Actualizar en la base de datos
+                    if (mesa != null && mesa.estado == "ocupada") {
+                        mesa.estado = "libre"
+                        db.mesaDao().updateMesa(mesa)
                         Log.d("CartaActivity", "Mesa ${codigoMesaQRGlobal} liberada.")
                         runOnUiThread { Toast.makeText(this@CartaActivity, "Mesa ${codigoMesaQRGlobal} liberada.", Toast.LENGTH_SHORT).show() }
                     }
@@ -175,22 +169,19 @@ class CartaActivity : AppCompatActivity() {
                     Log.e("CartaActivity", "Error al liberar la mesa ${codigoMesaQRGlobal}: ${e.message}")
                     runOnUiThread { Toast.makeText(this@CartaActivity, "Error al liberar la mesa.", Toast.LENGTH_SHORT).show() }
                 } finally {
-                    // Siempre redirigir al LoginActivity, incluso si falla la liberación
                     val intent = Intent(this@CartaActivity, LoginActivity::class.java)
-                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK // Limpiar la pila de actividades
+                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                     startActivity(intent)
-                    finish() // Finaliza CartaActivity
+                    finish()
                 }
             }
         } else {
-            // Si no hay código de mesa (caso excepcional), simplemente vuelve al login
             val intent = Intent(this@CartaActivity, LoginActivity::class.java)
             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             startActivity(intent)
             finish()
         }
     }
-    // --------------------------------------------------------
 
     fun actualizarPuntosUsuarioUI() {
         if (idUsuarioActual != null) {
@@ -213,11 +204,10 @@ class CartaActivity : AppCompatActivity() {
 
     private fun cargarDatosDeLaCarta(codigoMesaQR: String?) {
         lifecycleScope.launch {
-            // Este bloque solo ajusta idMesaGlobal si viene un código QR
             if (codigoMesaQR != null) {
                 val mesa = db.mesaDao().getMesaPorCodigoQR(codigoMesaQR)
-                idMesaGlobal = mesa?.id_mesa // Asegurarse de que idMesaGlobal se actualiza aquí
-                if (mesa == null && !esAdmin) { // Si no es admin y mesa no encontrada, error
+                idMesaGlobal = mesa?.id_mesa // Asegurarse de que idMesaGlobal se actualiza aquí (ID numérico)
+                if (mesa == null && !esAdmin) {
                     runOnUiThread {
                         Toast.makeText(this@CartaActivity, "Mesa '$codigoMesaQR' no encontrada.", Toast.LENGTH_SHORT).show()
                     }
@@ -225,13 +215,11 @@ class CartaActivity : AppCompatActivity() {
                     return@launch
                 }
             } else if (!esAdmin) {
-                // Este caso debería ser manejado por la lógica de LoginActivity
                 Log.e("CartaActivity_Debug", "Error: Cliente/Invitado sin código de mesa intentando cargar carta.")
                 runOnUiThread { Toast.makeText(this@CartaActivity, "Error: Mesa no especificada para el cliente.", Toast.LENGTH_LONG).show() }
                 binding.recyclerCocteles.adapter = CoctelAdapter(emptyList(), false, {}, {}, {})
                 return@launch
             }
-            // Si es admin y codigoMesaQR es null, idMesaGlobal se mantiene null (lo cual es correcto para gestión)
 
             val cocteles = db.coctelDao().getAll()
             Log.d("CartaActivity_Debug", "Número de CoctelEntity obtenidos de DAO: ${cocteles.size}")
@@ -243,7 +231,7 @@ class CartaActivity : AppCompatActivity() {
                     "cosmopolitan" -> R.drawable.cosmopolitan_img
                     "paloma" -> R.drawable.paloma_img
                     "negroni" -> R.drawable.negroni_img
-                    "pinia colada" -> R.drawable.pinia_colada_img
+                    "piña colada" -> R.drawable.pinia_colada_img
                     else -> R.drawable.placeholder_coctel
                 }
                 ItemCoctel(
@@ -268,7 +256,6 @@ class CartaActivity : AppCompatActivity() {
                     listaItems,
                     esAdmin,
                     onAddClick = { coctelSeleccionado ->
-                        // La lógica para añadir a pedido
                         if (esAdmin) {
                             Toast.makeText(this@CartaActivity, "Función de pedido no aplicable para admin en esta vista.", Toast.LENGTH_SHORT).show()
                             return@CoctelAdapter

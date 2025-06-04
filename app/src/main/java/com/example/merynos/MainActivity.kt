@@ -53,25 +53,25 @@ class MainActivity : AppCompatActivity() {
                 Log.d("DB_INIT", "Usuario Barman ya existe.")
             }
 
-            // --- CORRECCIÓN AQUÍ: Proporcionar un ID a la Mesa de Prueba ---
-            val codigoQR_mesa_prueba = "2" // <-- Código QR numérico para la mesa de prueba
-            val id_mesa_prueba = codigoQR_mesa_prueba.toInt() // <-- Convierte el QR a Int para el ID
+            // --- INSERCIÓN DE MESA DE PRUEBA: Correcta con id_mesa asignado manualmente ---
+            val codigoQR_mesa_prueba = "2"
+            val id_mesa_prueba = codigoQR_mesa_prueba.toInt() // El ID será el mismo
 
             val mesaExistente = db.mesaDao().getMesaPorCodigoQR(codigoQR_mesa_prueba)
             if (mesaExistente == null) {
                 db.mesaDao().insertMesa(
                     MesaEntity(
-                        id_mesa = id_mesa_prueba, // <-- ¡Asignamos el ID aquí!
+                        id_mesa = id_mesa_prueba, // Asignamos el ID directamente
                         codigoQR = codigoQR_mesa_prueba,
-                        nombreMesa = "Mesa Principal $codigoQR_mesa_prueba", // Nombre descriptivo
-                        estado = "libre" // Por defecto es libre
+                        nombreMesa = "Mesa Principal $codigoQR_mesa_prueba",
+                        estado = "libre"
                     )
                 )
                 Log.i("DB_INIT", "Mesa '$codigoQR_mesa_prueba' (ID: $id_mesa_prueba) de prueba insertada.")
             } else {
                 Log.d("DB_INIT", "Mesa '$codigoQR_mesa_prueba' ya existe.")
             }
-            // -------------------------------------------------------------
+            // -----------------------------------------------------------------------
 
             poblarCoctelesDePrueba()
         }
@@ -85,7 +85,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.btnLogin.setOnClickListener {
-            startActivity(Intent(this, LoginActivity::class.java))
+            startActivity(Intent(this, LoginActivity::class.java)) // <--- SIN @
         }
 
         binding.btnEntradaManualMesa.setOnClickListener {
@@ -96,10 +96,10 @@ class MainActivity : AppCompatActivity() {
     private fun mostrarDialogoEntradaManualMesa() {
         val builder = AlertDialog.Builder(this)
         builder.setTitle("Ingresar Código de Mesa")
-        builder.setMessage("Por favor, introduce el código de tu mesa (número):") // Indicamos que debe ser un número
+        builder.setMessage("Por favor, introduce el código de tu mesa:")
 
         val input = EditText(this)
-        input.inputType = InputType.TYPE_CLASS_NUMBER // <-- ¡Solo números!
+        input.inputType = InputType.TYPE_CLASS_TEXT
         builder.setView(input)
 
         builder.setPositiveButton("Aceptar") { dialog, _ ->
@@ -110,15 +110,8 @@ class MainActivity : AppCompatActivity() {
                 return@setPositiveButton
             }
 
-            val idMesa: Int? = codigoMesaStr.toIntOrNull() // Intentamos convertir a Int
-            if (idMesa == null || idMesa <= 0) { // Validamos que sea un número válido y positivo
-                Toast.makeText(this, "El código de mesa debe ser un número entero positivo.", Toast.LENGTH_SHORT).show()
-                return@setPositiveButton
-            }
-
-            Log.d("MANUAL_TABLE_ENTRY", "Mesa ingresada manually: $codigoMesaStr (ID: $idMesa)")
-            val intent = Intent(this, CartaActivity::class.java)
-            intent.putExtra("mesa", codigoMesaStr) // Pasamos el código QR como String
+            val intent = Intent(this, LoginActivity::class.java) // <--- SIN @
+            intent.putExtra("mesa_qr", codigoMesaStr)
             intent.putExtra("rol", "invitado")
             intent.putExtra("usuario_id", 0)
             startActivity(intent)
@@ -136,15 +129,10 @@ class MainActivity : AppCompatActivity() {
         if (result != null) {
             if (result.contents != null) {
                 val mesaCodigoQR = result.contents
-                val idMesaQR: Int? = mesaCodigoQR.toIntOrNull() // Convertir a Int
-                if (idMesaQR == null || idMesaQR <= 0) {
-                    Toast.makeText(this, "Código QR inválido. Debe ser un número de mesa válido.", Toast.LENGTH_LONG).show()
-                    return // No continuar si el QR no es un número válido
-                }
+                Log.d("QR_SCAN", "QR Escaneado: $mesaCodigoQR")
 
-                Log.d("QR_SCAN", "QR Escaneado: $mesaCodigoQR (ID: $idMesaQR)")
-                val intent = Intent(this, CartaActivity::class.java)
-                intent.putExtra("mesa", mesaCodigoQR) // Pasamos el String del QR
+                val intent = Intent(this, LoginActivity::class.java) // <--- SIN @
+                intent.putExtra("mesa_qr", mesaCodigoQR)
                 intent.putExtra("rol", "invitado")
                 intent.putExtra("usuario_id", 0)
                 startActivity(intent)

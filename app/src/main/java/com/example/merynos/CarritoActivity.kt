@@ -27,14 +27,15 @@ class CarritoActivity : AppCompatActivity(), CarritoAdapter.OnCantidadChangeList
     private lateinit var binding: ActivityCarritoBinding
     private lateinit var db: AppDatabase
     private var pedidoIdActual: Int? = null
-    private var idMesaCarrito: Int? = null
+    private var idMesaCarrito: Int? = null // <-- Ahora será el ID numérico de la mesa
+    private var codigoMesaQRCarrito: String? = null // <-- Nuevo campo para el código QR (String)
     private var idUsuarioCarrito: Int? = null
-    private lateinit var nombreMesaCarrito: String
+    // private lateinit var nombreMesaCarrito: String // Ya no es necesario si usas codigoMesaQRCarrito
 
     private lateinit var carritoAdapter: CarritoAdapter
     private val listaItemsCarrito = mutableListOf<ItemCarrito>()
     private lateinit var puntosDao: PuntosDao
-    private var cuponSeleccionado: String? = null // Guarda el cupón activo para esta instancia de CarritoActivity
+    private var cuponSeleccionado: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -54,28 +55,35 @@ class CarritoActivity : AppCompatActivity(), CarritoAdapter.OnCantidadChangeList
         pedidoIdActual = intent.getIntExtra("ID_PEDIDO_ACTUAL", -1)
         if (pedidoIdActual == -1) pedidoIdActual = null
 
+        // --- CAMBIOS AQUÍ: Recibir el ID numérico y el String del QR ---
         idMesaCarrito = intent.getIntExtra("ID_MESA_CARRITO", -1)
         if (idMesaCarrito == -1) idMesaCarrito = null
 
+        codigoMesaQRCarrito = intent.getStringExtra("NOMBRE_MESA_CARRITO") // Se usó este extra para pasar el QR
+        if (codigoMesaQRCarrito == null) {
+            // Manejar caso donde el QR no se pasa (ej. si vienes de un lugar que no lo envía)
+            Log.w("CarritoActivity", "Código QR de mesa no recibido. Usando 'Desconocida'.")
+            codigoMesaQRCarrito = "Desconocida"
+        }
+        // ----------------------------------------------------------------
+
         idUsuarioCarrito = intent.getIntExtra("ID_USUARIO_CARRITO", -1)
-        // Ajuste: si el idUsuarioCarrito es 0 (ej. invitado), lo consideramos null para la lógica de puntos.
         if (idUsuarioCarrito == -1 || idUsuarioCarrito == 0) {
             idUsuarioCarrito = null
         }
 
-        nombreMesaCarrito = intent.getStringExtra("NOMBRE_MESA_CARRITO") ?: "Mesa Desconocida"
+        // nombreMesaCarrito = intent.getStringExtra("NOMBRE_MESA_CARRITO") ?: "Mesa Desconocida" // Ya no se usa directamente
 
         setupRecyclerView()
         cargarDatosDelCarrito()
-        actualizarPuntosUsuarioUI() // Cargar y mostrar puntos al iniciar la actividad
+        actualizarPuntosUsuarioUI()
 
-        binding.txtTituloCarrito?.text = "Carrito - $nombreMesaCarrito"
-        binding.txtMesaCarrito?.text = "Mesa: $nombreMesaCarrito"
+        binding.txtTituloCarrito?.text = "Carrito - $codigoMesaQRCarrito" // Usar el código QR para el título
+        binding.txtMesaCarrito?.text = "Mesa: $codigoMesaQRCarrito" // Usar el código QR para la mesa
         binding.txtEstadoActualPedido?.text = "Cargando estado..."
         binding.txtTotalCarrito.text = "Total: €0.00"
 
         binding.btnCanjearPuntos?.setOnClickListener {
-            // Solo permitir canjear si hay un usuario logueado con ID y no hay un cupón ya aplicado
             if (idUsuarioCarrito != null) {
                 if (cuponSeleccionado == null) {
                     mostrarOpcionesCanjePuntos()
@@ -128,24 +136,19 @@ class CarritoActivity : AppCompatActivity(), CarritoAdapter.OnCantidadChangeList
         return puntosDao.obtenerTotalPuntos(idUsuarioCarrito ?: -1) ?: 0
     }
 
-    // --- FUNCIÓN ÚNICA para registrar transacciones de puntos ---
-    // Esta función ahora también calcula el 'puntosTotales' para la entidad.
     suspend fun registrarTransaccionPuntos(puntosCambio: Int) {
         val idUsuario = idUsuarioCarrito ?: return
 
-        // Obtiene el saldo actual ANTES de la nueva transacción
         val puntosActuales = obtenerPuntosUsuario()
-        // Calcula el nuevo saldo total
         val nuevoPuntosTotales = puntosActuales + puntosCambio
 
         val transaccion = PuntosEntity(
             id_usuario = idUsuario,
-            puntos = puntosCambio, // El cambio de puntos (positivo o negativo)
-            puntosTotales = nuevoPuntosTotales // El saldo total DESPUÉS de este cambio
+            puntos = puntosCambio,
+            puntosTotales = nuevoPuntosTotales
         )
         puntosDao.insertarPuntos(transaccion)
     }
-    // -----------------------------------------------------------
 
     fun mostrarOpcionesCanjePuntos() {
         val puntosUsuarioDeferred = lifecycleScope.async { obtenerPuntosUsuario() }
@@ -203,11 +206,9 @@ class CarritoActivity : AppCompatActivity(), CarritoAdapter.OnCantidadChangeList
                             return@launch
                         }
 
-                        // --- Registrar el canje de puntos con un valor NEGATIVO ---
-                        registrarTransaccionPuntos(-puntosACanjear) // Los puntos se restan aquí
-                        // ----------------------------------------------------------
+                        registrarTransaccionPuntos(-puntosACanjear)
 
-                        cuponSeleccionado = tipoCupon // Establece el cupón para aplicarlo
+                        cuponSeleccionado = tipoCupon
 
                         runOnUiThread {
                             Toast.makeText(this@CarritoActivity, "Cupón aplicado: $tipoCupon. Puntos restados.", Toast.LENGTH_SHORT).show()
@@ -240,7 +241,7 @@ class CarritoActivity : AppCompatActivity(), CarritoAdapter.OnCantidadChangeList
             } else if (idMesaCarrito != null && idUsuarioCarrito != null) {
                 val idUsuarioNonNull = idUsuarioCarrito!!
                 pedidoParaMostrar = db.pedidoDao()
-                    .obtenerPorMesaYEstado(idMesaCarrito!!, "pendiente")
+                    .obtenerPorMesaYEstado(idMesaCarrito!!, "pendiente") // Usar idMesaCarrito (Int)
                     .find { it.id_usuario == idUsuarioNonNull }
                 pedidoIdActual = pedidoParaMostrar?.id_pedido
             }
@@ -324,22 +325,18 @@ class CarritoActivity : AppCompatActivity(), CarritoAdapter.OnCantidadChangeList
             .setMessage("¿Estás seguro de que quieres enviar este pedido a preparación?")
             .setPositiveButton("Confirmar") { dialog, _ ->
                 lifecycleScope.launch {
-                    // 1. Actualizar el estado del pedido a "confirmado"
                     db.pedidoDao().actualizarEstado(pedidoIdActual!!, "confirmado")
 
-                    // 2. Calcular los puntos obtenidos en esta compra
                     val totalCompraActual = listaItemsCarrito.sumOf { it.cantidad * it.precioUnitario }
                     val puntosObtenidos = calcularPuntosPorCompra(totalCompraActual)
 
-                    // 3. Registrar los puntos obtenidos (transacción POSITIVA)
                     if (idUsuarioCarrito != null) {
-                        registrarTransaccionPuntos(puntosObtenidos) // Los puntos se suman aquí
+                        registrarTransaccionPuntos(puntosObtenidos)
                         runOnUiThread {
                             Toast.makeText(this@CarritoActivity, "¡Has ganado $puntosObtenidos puntos!", Toast.LENGTH_LONG).show()
                         }
                     }
 
-                    // 4. Resetear el cupón seleccionado para el próximo pedido del usuario
                     cuponSeleccionado = null
 
                     runOnUiThread {
@@ -370,7 +367,6 @@ class CarritoActivity : AppCompatActivity(), CarritoAdapter.OnCantidadChangeList
         }
 
         var totalFinal = totalSinDescuento
-        // Aplicar descuento solo si hay un cupón seleccionado Y la compra cumple los requisitos mínimos
         if (cuponSeleccionado != null) {
             when (cuponSeleccionado) {
                 "10_PORCIENTO" -> {
