@@ -11,6 +11,8 @@ interface PedidoDao {
     @Insert
     suspend fun insertarPedido(pedido: PedidoEntity): Long
 
+    @Query("DELETE FROM DetallePedido WHERE id_detalle_pedido = :idDetallePedido")
+    suspend fun eliminarDetallePedido(idDetallePedido: Int)
     @Insert
     suspend fun insertarDetalle(detalle: DetallePedidoEntity)
 

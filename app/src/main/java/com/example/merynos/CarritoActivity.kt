@@ -22,20 +22,22 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import java.util.Locale
 
-class CarritoActivity : AppCompatActivity(), CarritoAdapter.OnCantidadChangeListener {
+class CarritoActivity : AppCompatActivity(),
+    CarritoAdapter.OnCantidadChangeListener,
+    CarritoAdapter.OnEliminarCoctelListener { // <-- NUEVO: Implementar la interfaz para eliminar
 
     private lateinit var binding: ActivityCarritoBinding
     private lateinit var db: AppDatabase
     private var pedidoIdActual: Int? = null
-    private var idMesaCarrito: Int? = null // <-- Ahora será el ID numérico de la mesa
-    private var codigoMesaQRCarrito: String? = null // <-- Nuevo campo para el código QR (String)
+    private var idMesaCarrito: Int? = null
+    private var codigoMesaQRCarrito: String? = null
     private var idUsuarioCarrito: Int? = null
-    // private lateinit var nombreMesaCarrito: String // Ya no es necesario si usas codigoMesaQRCarrito
 
     private lateinit var carritoAdapter: CarritoAdapter
     private val listaItemsCarrito = mutableListOf<ItemCarrito>()
     private lateinit var puntosDao: PuntosDao
     private var cuponSeleccionado: String? = null
+    private var puntosARestarPorCupon: Int? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -55,31 +57,26 @@ class CarritoActivity : AppCompatActivity(), CarritoAdapter.OnCantidadChangeList
         pedidoIdActual = intent.getIntExtra("ID_PEDIDO_ACTUAL", -1)
         if (pedidoIdActual == -1) pedidoIdActual = null
 
-        // --- CAMBIOS AQUÍ: Recibir el ID numérico y el String del QR ---
         idMesaCarrito = intent.getIntExtra("ID_MESA_CARRITO", -1)
         if (idMesaCarrito == -1) idMesaCarrito = null
 
-        codigoMesaQRCarrito = intent.getStringExtra("NOMBRE_MESA_CARRITO") // Se usó este extra para pasar el QR
+        codigoMesaQRCarrito = intent.getStringExtra("NOMBRE_MESA_CARRITO")
         if (codigoMesaQRCarrito == null) {
-            // Manejar caso donde el QR no se pasa (ej. si vienes de un lugar que no lo envía)
             Log.w("CarritoActivity", "Código QR de mesa no recibido. Usando 'Desconocida'.")
             codigoMesaQRCarrito = "Desconocida"
         }
-        // ----------------------------------------------------------------
 
         idUsuarioCarrito = intent.getIntExtra("ID_USUARIO_CARRITO", -1)
         if (idUsuarioCarrito == -1 || idUsuarioCarrito == 0) {
             idUsuarioCarrito = null
         }
 
-        // nombreMesaCarrito = intent.getStringExtra("NOMBRE_MESA_CARRITO") ?: "Mesa Desconocida" // Ya no se usa directamente
-
-        setupRecyclerView()
+        setupRecyclerView() // Ahora el setupRecyclerView usa 'this' para el nuevo listener
         cargarDatosDelCarrito()
         actualizarPuntosUsuarioUI()
 
-        binding.txtTituloCarrito?.text = "Carrito - $codigoMesaQRCarrito" // Usar el código QR para el título
-        binding.txtMesaCarrito?.text = "Mesa: $codigoMesaQRCarrito" // Usar el código QR para la mesa
+        binding.txtTituloCarrito?.text = "Carrito - $codigoMesaQRCarrito"
+        binding.txtMesaCarrito?.text = "Mesa: $codigoMesaQRCarrito"
         binding.txtEstadoActualPedido?.text = "Cargando estado..."
         binding.txtTotalCarrito.text = "Total: €0.00"
 
@@ -206,13 +203,11 @@ class CarritoActivity : AppCompatActivity(), CarritoAdapter.OnCantidadChangeList
                             return@launch
                         }
 
-                        registrarTransaccionPuntos(-puntosACanjear)
-
                         cuponSeleccionado = tipoCupon
+                        puntosARestarPorCupon = puntosACanjear
 
                         runOnUiThread {
-                            Toast.makeText(this@CarritoActivity, "Cupón aplicado: $tipoCupon. Puntos restados.", Toast.LENGTH_SHORT).show()
-                            actualizarPuntosUsuarioUI()
+                            Toast.makeText(this@CarritoActivity, "Cupón '$tipoCupon' pre-seleccionado. Puntos se deducirán al confirmar pedido si cumple condición.", Toast.LENGTH_LONG).show()
                             actualizarTotalCarrito()
                         }
                         dialog.dismiss()
@@ -225,7 +220,8 @@ class CarritoActivity : AppCompatActivity(), CarritoAdapter.OnCantidadChangeList
     }
 
     private fun setupRecyclerView() {
-        carritoAdapter = CarritoAdapter(listaItemsCarrito, this)
+        // --- CAMBIO AQUÍ: Pasar 'this' como OnEliminarCoctelListener también ---
+        carritoAdapter = CarritoAdapter(listaItemsCarrito, this, this)
         binding.recyclerCarrito.layoutManager = LinearLayoutManager(this)
         binding.recyclerCarrito.adapter = carritoAdapter
     }
@@ -241,7 +237,7 @@ class CarritoActivity : AppCompatActivity(), CarritoAdapter.OnCantidadChangeList
             } else if (idMesaCarrito != null && idUsuarioCarrito != null) {
                 val idUsuarioNonNull = idUsuarioCarrito!!
                 pedidoParaMostrar = db.pedidoDao()
-                    .obtenerPorMesaYEstado(idMesaCarrito!!, "pendiente") // Usar idMesaCarrito (Int)
+                    .obtenerPorMesaYEstado(idMesaCarrito!!, "pendiente")
                     .find { it.id_usuario == idUsuarioNonNull }
                 pedidoIdActual = pedidoParaMostrar?.id_pedido
             }
@@ -325,22 +321,64 @@ class CarritoActivity : AppCompatActivity(), CarritoAdapter.OnCantidadChangeList
             .setMessage("¿Estás seguro de que quieres enviar este pedido a preparación?")
             .setPositiveButton("Confirmar") { dialog, _ ->
                 lifecycleScope.launch {
+                    val totalCompraOriginal = listaItemsCarrito.sumOf { it.cantidad * it.precioUnitario }
+                    var totalFinalDescontado = totalCompraOriginal
+
+                    var cupoFueAplicadoConExito = false
+
+                    if (cuponSeleccionado != null && puntosARestarPorCupon != null) {
+                        when (cuponSeleccionado) {
+                            "10_PORCIENTO" -> {
+                                if (totalCompraOriginal >= 20) {
+                                    totalFinalDescontado *= 0.90
+                                    cupoFueAplicadoConExito = true
+                                } else {
+                                    runOnUiThread { Toast.makeText(this@CarritoActivity, "Compra mínima de 20€ para el 10% no alcanzada. Cupón no aplicado.", Toast.LENGTH_LONG).show() }
+                                }
+                            }
+                            "20_PORCIENTO" -> {
+                                if (totalCompraOriginal >= 50) {
+                                    totalFinalDescontado *= 0.80
+                                    cupoFueAplicadoConExito = true
+                                } else {
+                                    runOnUiThread { Toast.makeText(this@CarritoActivity, "Compra mínima de 50€ para el 20% no alcanzada. Cupón no aplicado.", Toast.LENGTH_LONG).show() }
+                                }
+                            }
+                            "15_PORCIENTO_COCTEL" -> {
+                                if (totalCompraOriginal >= 100) {
+                                    totalFinalDescontado = 0.0
+                                    for (item in listaItemsCarrito) {
+                                        totalFinalDescontado += item.cantidad * (item.precioUnitario * 0.85)
+                                    }
+                                    cupoFueAplicadoConExito = true
+                                } else {
+                                    runOnUiThread { Toast.makeText(this@CarritoActivity, "Compra mínima de 100€ para el 15% en cócteles no alcanzada. Cupón no aplicado.", Toast.LENGTH_LONG).show() }
+                                }
+                            }
+                        }
+
+                        if (cupoFueAplicadoConExito && idUsuarioCarrito != null) {
+                            registrarTransaccionPuntos(-puntosARestarPorCupon!!)
+                            runOnUiThread { Toast.makeText(this@CarritoActivity, "Puntos del cupón deducidos.", Toast.LENGTH_SHORT).show() }
+                        }
+                    }
+
                     db.pedidoDao().actualizarEstado(pedidoIdActual!!, "confirmado")
 
-                    val totalCompraActual = listaItemsCarrito.sumOf { it.cantidad * it.precioUnitario }
-                    val puntosObtenidos = calcularPuntosPorCompra(totalCompraActual)
-
+                    val puntosGanados = calcularPuntosPorCompra(totalCompraOriginal)
                     if (idUsuarioCarrito != null) {
-                        registrarTransaccionPuntos(puntosObtenidos)
+                        registrarTransaccionPuntos(puntosGanados)
                         runOnUiThread {
-                            Toast.makeText(this@CarritoActivity, "¡Has ganado $puntosObtenidos puntos!", Toast.LENGTH_LONG).show()
+                            Toast.makeText(this@CarritoActivity, "¡Has ganado $puntosGanados puntos!", Toast.LENGTH_LONG).show()
                         }
                     }
 
                     cuponSeleccionado = null
+                    puntosARestarPorCupon = null
 
                     runOnUiThread {
                         Toast.makeText(this@CarritoActivity, "Pedido confirmado y enviado", Toast.LENGTH_LONG).show()
+                        binding.txtTotalCarrito.text = "Total: €%.2f".format(totalFinalDescontado)
                         setResult(Activity.RESULT_OK)
                         finish()
                     }
@@ -360,6 +398,42 @@ class CarritoActivity : AppCompatActivity(), CarritoAdapter.OnCantidadChangeList
         }
     }
 
+    // --- NUEVO: Implementación del listener para eliminar cócteles ---
+    override fun onEliminarCoctel(itemCarrito: ItemCarrito) {
+        AlertDialog.Builder(this)
+            .setTitle("Eliminar Cóctel")
+            .setMessage("¿Estás seguro de que quieres eliminar '${itemCarrito.nombre}' de tu pedido?")
+            .setPositiveButton("Eliminar") { dialog, _ ->
+                lifecycleScope.launch {
+                    // Asegurarse de que tenemos un pedido activo y el detalle a eliminar
+                    if (pedidoIdActual != null && itemCarrito.id_detalle_pedido != null) {
+                        try {
+                            // Borrar el detalle del pedido de la base de datos
+                            db.pedidoDao().eliminarDetallePedido(itemCarrito.id_detalle_pedido) // Necesitarás añadir este método en PedidoDao
+                            runOnUiThread {
+                                Toast.makeText(this@CarritoActivity, "'${itemCarrito.nombre}' eliminado del pedido.", Toast.LENGTH_SHORT).show()
+                            }
+                            // Recargar los datos del carrito para actualizar la UI
+                            cargarDatosDelCarrito()
+                        } catch (e: Exception) {
+                            Log.e("CarritoActivity", "Error al eliminar cóctel del pedido: ${e.message}")
+                            runOnUiThread {
+                                Toast.makeText(this@CarritoActivity, "Error al eliminar cóctel.", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    } else {
+                        runOnUiThread {
+                            Toast.makeText(this@CarritoActivity, "No se pudo eliminar el cóctel (detalle o pedido no encontrado).", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+    // ------------------------------------------------------------------
+
     private fun actualizarTotalCarrito() {
         var totalSinDescuento = 0.0
         for (item in listaItemsCarrito) {
@@ -371,11 +445,9 @@ class CarritoActivity : AppCompatActivity(), CarritoAdapter.OnCantidadChangeList
             when (cuponSeleccionado) {
                 "10_PORCIENTO" -> {
                     if (totalSinDescuento >= 20) totalFinal *= 0.90
-                    else Toast.makeText(this, "Compra mínima de 20€ para el 10% no alcanzada.", Toast.LENGTH_SHORT).show()
                 }
                 "20_PORCIENTO" -> {
                     if (totalSinDescuento >= 50) totalFinal *= 0.80
-                    else Toast.makeText(this, "Compra mínima de 50€ para el 20% no alcanzada.", Toast.LENGTH_SHORT).show()
                 }
                 "15_PORCIENTO_COCTEL" -> {
                     if (totalSinDescuento >= 100) {
@@ -383,7 +455,7 @@ class CarritoActivity : AppCompatActivity(), CarritoAdapter.OnCantidadChangeList
                         for (item in listaItemsCarrito) {
                             totalFinal += item.cantidad * (item.precioUnitario * 0.85)
                         }
-                    } else Toast.makeText(this, "Compra mínima de 100€ para el 15% en cócteles no alcanzada.", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
         }

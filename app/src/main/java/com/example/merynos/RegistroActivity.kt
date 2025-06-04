@@ -36,6 +36,14 @@ class RegistroActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
+            // --- AÑADIMOS LA VALIDACIÓN DE LA CONTRASEÑA AQUÍ ---
+            val validacionContraseñaResultado = validarContraseña(pass)
+            if (validacionContraseñaResultado != null) {
+                Toast.makeText(this, validacionContraseñaResultado, Toast.LENGTH_LONG).show()
+                return@setOnClickListener // Si la contraseña no es válida, salir del listener
+            }
+            // ----------------------------------------------------
+
             lifecycleScope.launch {
                 val usuarioExistente = db.usuarioDao().getPorEmail(email)
                 if (usuarioExistente != null) {
@@ -48,7 +56,7 @@ class RegistroActivity : AppCompatActivity() {
                         UsuarioEntity(
                             nombreYApellidos = nombre,
                             email = email,
-                            contraseña = pass,
+                            contraseña = pass, // Aquí se guarda la contraseña (considera encriptarla)
                             rol = "cliente"
                         )
                     )
@@ -66,4 +74,26 @@ class RegistroActivity : AppCompatActivity() {
             finish()
         }
     }
+
+    // --- FUNCIÓN PARA VALIDAR LA CONTRASEÑA ---
+    /**
+     * Valida si la contraseña cumple con los requisitos.
+     * @return null si la contraseña es válida, o un String con el mensaje de error si no lo es.
+     */
+    private fun validarContraseña(password: String): String? {
+        if (password.length < 6) {
+            return "La contraseña debe tener al menos 6 caracteres."
+        }
+        if (!password.contains(Regex("[A-Z]"))) {
+            return "La contraseña debe contener al menos una letra mayúscula."
+        }
+        if (!password.contains(Regex("[a-z]"))) {
+            return "La contraseña debe contener al menos una letra minúscula."
+        }
+        if (!password.contains(Regex("[0-9]"))) {
+            return "La contraseña debe contener al menos un número."
+        }
+        return null // La contraseña es válida
+    }
+    // ------------------------------------------------
 }
